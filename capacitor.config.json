@@ -1,0 +1,13 @@
+{
+  "appId": "com.dodgedash.newport",
+  "appName": "Dodge Mike's Newport Send",
+  "webDir": "web",
+  "bundledWebRuntime": false,
+  "ios": {
+    "contentInset": "always",
+    "allowsLinkPreview": false
+  },
+  "server": {
+    "iosScheme": "capacitor"
+  }
+}

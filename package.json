@@ -1,0 +1,19 @@
+{
+  "name": "dodge-dash-newport",
+  "version": "1.0.0",
+  "description": "Dodge Mike's Newport Send packaged with Capacitor for iOS.",
+  "private": true,
+  "scripts": {
+    "start": "python3 -m http.server 4173 -d web",
+    "check": "python3 scripts/check-index.py",
+    "sync:ios": "npx cap sync ios",
+    "open:ios": "npx cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "7.6.6",
+    "@capacitor/ios": "7.6.6"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "7.6.6"
+  }
+}
