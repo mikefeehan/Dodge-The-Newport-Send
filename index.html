@@ -57,10 +57,10 @@
   @keyframes rotSpin{ 0%,100%{transform:rotate(-12deg)} 50%{transform:rotate(78deg)} }
 
   /* ---------- HUD ---------- */
+  .topbar{ position:absolute; top:0; left:0; right:0; z-index:4; padding:10px 12px 0; pointer-events:none; }
   .hud{
-    position:absolute; top:0; left:0; right:0; padding:10px 12px;
     display:flex; align-items:flex-start; justify-content:space-between; gap:8px;
-    pointer-events:none; font-weight:800; letter-spacing:.5px; z-index:4;
+    font-weight:800; letter-spacing:.5px;
   }
   .hud .col{ display:flex; flex-direction:column; gap:6px; }
   .hud .right{ align-items:flex-end; }
@@ -86,8 +86,8 @@
   }
   .iconbtn:hover{ background:rgba(33,240,255,.14); }
   /* time bar */
-  #timewrap{ position:absolute; left:12px; right:12px; top:54px; height:6px; border-radius:6px;
-             background:rgba(255,255,255,.08); overflow:hidden; z-index:3; pointer-events:none; }
+  #timewrap{ margin-top:8px; height:6px; border-radius:6px;
+             background:rgba(255,255,255,.08); overflow:hidden; }
   #timefill{ height:100%; width:100%; border-radius:6px;
              background:linear-gradient(90deg, var(--neon), var(--neon2)); box-shadow:0 0 14px var(--neon); }
 
@@ -137,6 +137,7 @@
   <canvas id="game" width="960" height="600" aria-label="Dodge game area"></canvas>
 
   <!-- HUD -->
+  <div class="topbar">
   <div class="hud">
     <div class="col">
       <div class="chip" id="hudLevel">LVL 1 · The Peninsula</div>
@@ -158,6 +159,7 @@
     </div>
   </div>
   <div id="timewrap"><div id="timefill"></div></div>
+  </div><!-- /.topbar -->
   </div><!-- /#stage -->
 
   <!-- Intro -->
