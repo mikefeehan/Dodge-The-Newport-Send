@@ -579,8 +579,8 @@
   function drawPlayer(){
     const cx=player.x+player.w/2, cy=player.y+player.h/2;
     // full-body runner: keep the sprite's aspect, drawn a little larger than the hitbox
-    const ph = 100;
-    const aspect = (face.naturalWidth && face.naturalHeight) ? face.naturalWidth/face.naturalHeight : 0.75;
+    const ph = 138;
+    const aspect = (face.naturalWidth && face.naturalHeight) ? face.naturalWidth/face.naturalHeight : 0.62;
     const pw = ph*aspect;
     const loaded = face.complete && face.naturalWidth;
     // motion-blur ghosts of the runner
