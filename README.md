@@ -1,6 +1,6 @@
 # 🌃 Dodge Mike's Newport Send
 
-A neon arcade dodger. Pilot **Mike's face** through **10 Newport districts**, weave past falling
+A neon arcade dodger. Pilot **Mike** through **10 Newport districts**, weave past falling
 bar signs, grab power-ups, and skim past danger for **near-miss combos**. One single HTML file —
 no build step, no dependencies.
 
@@ -8,11 +8,14 @@ no build step, no dependencies.
 
 ## Files
 - `index.html` — the entire game (graphics, audio, logic — all inline)
+- `player.png` — Mike character art
 - `niiko_x_swae.mp3` — the soundtrack (must sit next to `index.html`)
 
 ## How to play
 - **Survive 10 levels**, 30 seconds each. Score **carries** across levels.
-- You have **3 lives** (earn up to 5). A hit costs a life and gives you a moment of invulnerability.
+- Each level starts with **3 lives**. A hit costs a life and gives you a moment of invulnerability.
+- The rare **+1 life** power-up can boost you up to **5 lives** during that level.
+- Clear the timer to advance to the next district and reset back to **3 lives** for the next level.
 - **Skim past signs** without touching them to rack up a **combo multiplier** — the higher the
   combo, the more every point is worth.
 
@@ -31,7 +34,7 @@ no build step, no dependencies.
 | 💚 | **SHIELD** | Absorbs one hit (~8s) |
 | 💛 | **VIP** | Instantly clears every sign on screen |
 | 💜 | **2×** | Doubles your score (~7s) |
-| ❤️ | **+1** | Extra life (rare) |
+| ❤️ | **+1** | Extra life for the current level (rare) |
 
 ## Scoring & leaderboard
 - Score builds continuously, scaled by your **level** and **combo multiplier**.
@@ -51,7 +54,7 @@ python -m http.server 8000
 ```
 
 ## Publish on GitHub Pages
-1. Push `index.html` **and** `niiko_x_swae.mp3` to the repo root.
+1. Push `index.html`, `player.png`, icons, and `niiko_x_swae.mp3` to the repo root.
 2. **Settings → Pages →** Branch: `main`, Folder: `/ (root)` → **Save**.
 3. Live in ~1 minute at `https://YOUR-USERNAME.github.io/YOUR-REPO/`.
 

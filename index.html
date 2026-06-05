@@ -147,7 +147,7 @@
     <div class="card">
       <div class="title"><span class="sub">10-Level Neon Run</span>Dodge Mike's Newport Send</div>
       <p class="muted">Pilot Mike through 10 Newport districts. Dodge the falling bar signs, grab power-ups,
-        and skim past obstacles for <b>near-miss combos</b>. 3 lives. 30s a level. Score carries.</p>
+        and skim past obstacles for <b>near-miss combos</b>. 3 lives per level. 30s a level. Score carries.</p>
       <div class="ctrls">
         <div class="ctrl"><b>DESKTOP</b>Arrows / WASD<br>or move the mouse</div>
         <div class="ctrl"><b>MOBILE</b>Drag to steer<br>or tilt the phone</div>
@@ -412,7 +412,7 @@
   }
   function nextLevel(){
     if(S.level>=10){ endGame(true); return; }
-    S.level++; S.levelsCleared++; S.time=LEVEL_TIME; S.transition=1.4;
+    S.level++; S.levelsCleared++; S.time=LEVEL_TIME; S.lives=START_LIVES; S.invuln=1.2; S.transition=1.4;
     S.spawnRate=Math.max(0.4,0.95-(S.level-1)*0.06);
     S.speedMin=95+(S.level-1)*12; S.speedMax=150+(S.level-1)*16;
     const L=LEVELS[S.level-1];
