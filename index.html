@@ -103,8 +103,13 @@
           line-height:1.05; text-shadow:0 0 14px var(--neon2), 0 0 30px var(--neon2); margin:2px 0 6px; }
   .title .sub{ display:block; font-size:14px; letter-spacing:3px; color:var(--neon); text-shadow:0 0 10px var(--neon); }
   /* BIG hero title on the start screen */
-  #overlayIntro .title{ font-size:clamp(44px, 10vw, 80px); line-height:1.0; margin:8px 0 16px;
-    text-shadow:0 0 20px var(--neon2), 0 0 48px var(--neon2), 0 0 84px var(--neon2); }
+  #overlayIntro .card{ max-width:760px; }
+  #overlayIntro .title{ font-size:clamp(32px, 9vw, 84px); line-height:1.04; margin:10px 0 18px;
+    text-shadow:0 0 22px var(--neon2), 0 0 52px var(--neon2), 0 0 92px var(--neon2); }
+  @supports (width:1cqw){
+    #overlayIntro .card{ container-type:inline-size; }
+    #overlayIntro .title{ font-size:clamp(32px, 11.4cqw, 84px); }   /* biggest size that fits 2 words on the card */
+  }
   .muted{ opacity:.88; font-size:14px; line-height:1.5; }
   .btn{
     margin-top:12px; background:transparent; color:#fff; border:2px solid var(--neon);
@@ -168,7 +173,7 @@
   <!-- Intro -->
   <div id="overlayIntro" class="overlay">
     <div class="card">
-      <div class="title"><span class="sub">10-Level Neon Run</span>Dodge Mike's Newport Send</div>
+      <div class="title"><span class="sub">10-Level Neon Run</span>Dodge Mike's<br>Newport Send</div>
       <p class="muted">Pilot Mike through 10 Newport districts. Dodge the falling bar signs, grab power-ups,
         and skim past obstacles for <b>near-miss combos</b>. 3 lives per level. 30s a level. Score carries.</p>
       <div class="ctrls">
