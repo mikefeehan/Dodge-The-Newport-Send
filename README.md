@@ -1,34 +1,59 @@
-# Dodge Dash — King of Newport Nightlife (10 Levels)
+# 🌃 Dodge Mike's Newport Send
 
-This package ships **without** the MP3 to keep the repo size small. The game expects a file named **`niiko_x_swae.mp3`** in the same folder as `index.html`.
+A neon arcade dodger. Pilot **Mike's face** through **10 Newport districts**, weave past falling
+bar signs, grab power-ups, and skim past danger for **near-miss combos**. One single HTML file —
+no build step, no dependencies.
+
+🎮 **Play it:** https://mikefeehan.github.io/Dodge-The-Newport-Send/
 
 ## Files
-- `index.html` — the full 10-level game
-- *(you add)* `niiko_x_swae.mp3` — place it next to `index.html`
+- `index.html` — the entire game (graphics, audio, logic — all inline)
+- `niiko_x_swae.mp3` — the soundtrack (must sit next to `index.html`)
 
-## Publish on GitHub Pages
-1. Create a **public** repo (e.g. `dodge-dash-newport`).
-2. Upload `index.html` **and** your `niiko_x_swae.mp3` to the **repo root**.
-3. Go to **Settings → Pages** and set:
-   - **Branch:** `main`
-   - **Folder:** `/ (root)`
-4. Click **Save** and wait ~1 minute.
-5. Your game will be live at: `https://YOUR-USERNAME.github.io/YOUR-REPO/`
+## How to play
+- **Survive 10 levels**, 30 seconds each. Score **carries** across levels.
+- You have **3 lives** (earn up to 5). A hit costs a life and gives you a moment of invulnerability.
+- **Skim past signs** without touching them to rack up a **combo multiplier** — the higher the
+  combo, the more every point is worth.
 
-## Controls
-- **Desktop:** Arrows or WASD (smooth movement).
-- **Mobile:** Tilt left/right **and** forward/back (allow motion permissions). Tap left/right as fallback.
-- Press **Play** to start. 30s per level. **1 hit = Game Over** (restart from Level 1).
+### Controls
+| Platform | Steer | Other |
+|----------|-------|-------|
+| **Desktop** | Arrow keys / **WASD**, or just **move the mouse** | **P** = pause · **M** = mute |
+| **Mobile** | **Drag** anywhere to steer, or **tilt** the phone | on-screen pause / mute buttons |
+
+> Tap **Play** to start — that first tap is what unlocks the music and (on iPhone) the tilt sensors.
 
 ## Power-ups
-- **SLOW** — Brief slow-motion (≈5s)
-- **SHIELD** — Absorb one hit (≈6s)
-- **VIP** — Clears all active obstacles
+| | Name | Effect |
+|---|------|--------|
+| 🩵 | **SLOW** | Slows everything down (~5s) |
+| 💚 | **SHIELD** | Absorbs one hit (~8s) |
+| 💛 | **VIP** | Instantly clears every sign on screen |
+| 💜 | **2×** | Doubles your score (~7s) |
+| ❤️ | **+1** | Extra life (rare) |
 
-## Scoring & Leaderboard
-- Score accrues continuously across levels.
-- Game Over shows **final score** and **best score**.
-- Enter **initials** and save to a **Top-5 leaderboard** (stored locally in your browser).
-- Share button copies your page URL to your clipboard.
+## Scoring & leaderboard
+- Score builds continuously, scaled by your **level** and **combo multiplier**.
+- **Near-misses** and power-ups grow your combo; getting hit resets it.
+- Game Over shows your run stats (score, best, levels cleared, best combo, time survived).
+- Save your initials to a local **Top-5 leaderboard** (stored in your browser) and **Share** your score.
 
-Enjoy!
+## The 10 districts
+The Peninsula · Balboa Pier · Cannery Village · Lido Marina · Newport Heights · Corona del Mar ·
+Fashion Island · Back Bay · The Wedge · Sunset Send — each with its own neon palette and rising difficulty.
+
+## Run it locally
+It's a static page, so any web server works (audio needs `http://`, not `file://`):
+```bash
+python -m http.server 8000
+# then open http://localhost:8000
+```
+
+## Publish on GitHub Pages
+1. Push `index.html` **and** `niiko_x_swae.mp3` to the repo root.
+2. **Settings → Pages →** Branch: `main`, Folder: `/ (root)` → **Save**.
+3. Live in ~1 minute at `https://YOUR-USERNAME.github.io/YOUR-REPO/`.
+
+---
+*Dev note: `window.__DODGE__` exposes a small debug handle (state + manual step/draw) for tinkering in the console.*
