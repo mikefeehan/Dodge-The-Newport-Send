@@ -185,7 +185,7 @@
         <div><span class="k" style="color:#ffd166">★</span> combos = big points</div>
       </div>
       <button id="btnPlay" class="btn pulse">Play</button>
-      <div class="copy">Best in landscape. Tap Play to start the music.</div>
+      <div class="copy">Plays in any orientation. Tap Play to start the music.</div>
     </div>
   </div>
 
@@ -388,9 +388,12 @@
   // ============================================================= SPAWNING
   function spawnObstacle(){
     const label=BARS[(Math.random()*BARS.length)|0];
-    ctx.save(); ctx.font='bold 20px Inter, system-ui, sans-serif';
-    const tw=ctx.measureText(label).width; ctx.restore();
-    const w=clamp(tw+30,110,330), h=38;
+    const maxW=clamp(VW*0.46, 130, 340);             // signs scale to the field -> dodgeable in portrait too
+    let fs=20; ctx.save(); ctx.font='bold 20px Inter, system-ui, sans-serif';
+    let tw=ctx.measureText(label).width;
+    if(tw+26>maxW){ fs=Math.max(11,Math.floor(20*(maxW-26)/tw)); ctx.font='bold '+fs+'px Inter, system-ui, sans-serif'; tw=ctx.measureText(label).width; }
+    ctx.restore();
+    const w=clamp(tw+26, Math.min(96,maxW), maxW), h=38;
     const x=rand(0,VW-w);
     let pattern='straight', vx=0;
     const r=Math.random();
@@ -399,7 +402,7 @@
     let vy=rand(S.speedMin,S.speedMax);
     if(pattern==='express'){ vy*=1.7; }
     if(pattern==='drift'){ vx=rand(60,130)*(Math.random()<0.5?-1:1); }
-    S.obs.push({x,y:-h,w,h,vy,vx,label,pattern,color:NEON[(Math.random()*NEON.length)|0],scored:false});
+    S.obs.push({x,y:-h,w,h,vy,vx,label,pattern,color:NEON[(Math.random()*NEON.length)|0],scored:false,fs});
   }
   function pickPowerup(){
     let r=Math.random()*PW_TOTW;
@@ -661,8 +664,9 @@
       ctx.save(); ctx.shadowColor=o.color; ctx.shadowBlur=14;
       ctx.strokeStyle=o.color; ctx.fillStyle='rgba(0,0,0,.30)'; ctx.lineWidth=2;
       rr(o.x,o.y,o.w,o.h,16); ctx.fill(); ctx.stroke();
-      ctx.shadowBlur=0; ctx.font='bold 20px Inter, system-ui, sans-serif'; ctx.fillStyle=o.color;
-      ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(o.label,o.x+o.w/2,o.y+o.h/2+1);
+      ctx.shadowBlur=0; ctx.font='bold '+(o.fs||20)+'px Inter, system-ui, sans-serif'; ctx.fillStyle=o.color;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.save(); ctx.beginPath(); ctx.rect(o.x+3,o.y,o.w-6,o.h); ctx.clip(); ctx.fillText(o.label,o.x+o.w/2,o.y+o.h/2+1); ctx.restore();
       ctx.restore();
     }
     // pickups
@@ -771,20 +775,11 @@
   function fitScreen(){
     let w=innerWidth||0, h=innerHeight||0;
     if(w<2 || h<2){ w=960; h=600; }                  // fallback if viewport isn't measured yet
-    const portrait=h>w, touch=matchMedia('(pointer:coarse)').matches;
-    const showRotate = portrait && touch;
-    document.body.classList.toggle('show-rotate', showRotate);
-    VW = Math.round(clamp(VH*(w/h), 360, 1400));      // match viewport aspect -> fills, no distortion
-    if(!isFinite(VW) || VW<360) VW=960;
+    VW = Math.round(clamp(VH*(w/h), 240, 1500));      // match viewport aspect -> fills landscape OR portrait, no distortion
+    if(!isFinite(VW) || VW<240) VW=960;
     if(c.width!==VW){ c.width=VW; c.height=VH; }
     player.x=clamp(player.x,0,VW-player.w);
     ambient.forEach(a=>{ if(a.x>VW) a.x=Math.random()*VW; });
-    if(showRotate){
-      if(S.mode==='playing'){ S.mode='paused'; pausedByRotate=true; try{bgm.pause();}catch(e){} }
-    } else if(pausedByRotate && S.mode==='paused'){
-      S.mode='playing'; last=performance.now(); if(!S.muted){try{bgm.play().catch(()=>{});}catch(e){}}
-      pausedByRotate=false;
-    }
   }
   addEventListener('resize', fitScreen);
   addEventListener('orientationchange', ()=>setTimeout(fitScreen,250));
