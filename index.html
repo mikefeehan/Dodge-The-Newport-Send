@@ -189,8 +189,12 @@
         <div><span class="k" style="color:#ff4d6d">+1</span> extra life</div>
         <div><span class="k" style="color:#ffd166">★</span> combos = big points</div>
       </div>
-      <button id="btnPlay" class="btn pulse">Play</button>
-      <div class="copy">Plays in any orientation. Tap Play to start the music.</div>
+      <div class="muted" style="margin:6px 0 0; font-weight:800; color:var(--neon); letter-spacing:1px;">CHOOSE HOW TO PLAY</div>
+      <div class="rowbtns" style="margin-top:8px;">
+        <button id="btnPlayH" class="btn pulse">▭&nbsp;Horizontal</button>
+        <button id="btnPlayV" class="btn pulse">▯&nbsp;Vertical</button>
+      </div>
+      <div class="copy">Tap one to start — music begins on tap.</div>
     </div>
   </div>
 
@@ -234,7 +238,7 @@
 (() => {
   "use strict";
   // ============================================================= CONFIG
-  let VW = 960; const VH = 600;        // VW is recomputed to fill the screen; VH stays fixed
+  let VW = 1067, VH = 600, orient = 'landscape';   // chosen orientation sets the field shape (computed in fitScreen)
   const LEVEL_TIME = 30;
   const START_LIVES = 3, MAX_LIVES = 5;
 
@@ -275,7 +279,7 @@
     level:$('hudLevel'), lives:$('hudLives'), score:$('hudScore'), best:$('hudBest'),
     combo:$('combo'), pwBar:$('pwBar'), timefill:$('timefill'),
     oIntro:$('overlayIntro'), oPause:$('overlayPause'), oGO:$('overlayGameOver'),
-    btnPlay:$('btnPlay'), btnAgain:$('btnAgain'), btnShare:$('btnShare'), shareMsg:$('shareMsg'),
+    btnPlayH:$('btnPlayH'), btnPlayV:$('btnPlayV'), btnAgain:$('btnAgain'), btnShare:$('btnShare'), shareMsg:$('shareMsg'),
     btnPause:$('btnPause'), btnResume:$('btnResume'), btnQuit:$('btnQuit'), btnMute:$('btnMute'),
     initials:$('initials'), saveScore:$('saveScore'), board:$('leaderboard'),
     goTitle:$('goTitle'), goStats:$('goStats'),
@@ -435,13 +439,15 @@
       slow:0,shield:0,dbl:0,invuln:1.2,shake:0,levelsCleared:0,runTime:0,transition:1.4,pickupT:0});
     player.x=VW/2-player.w/2; player.y=VH-130; player.vx=0; player.vy=0; player.trail.length=0;
   }
-  function startGame(){
+  function startGame(o){
     unlockAudio();
+    if(o){ orient=o; fitScreen(); }
     el.oIntro.classList.add('hidden'); el.oGO.classList.add('hidden'); el.oPause.classList.add('hidden');
     resetRun();
     S.mode='playing'; last=performance.now();
     floatText(VW/2,VH/2-40,'LVL 1 · '+LEVELS[0].name,LEVELS[0].sun,30);
     playMusic();
+    checkRotate();
   }
   function nextLevel(){
     if(S.level>=10){ endGame(true); return; }
@@ -742,7 +748,8 @@
   }
 
   // ============================================================= WIRING
-  el.btnPlay.addEventListener('click',()=>{SFX.click();startGame();});
+  el.btnPlayH.addEventListener('click',()=>{SFX.click();startGame('landscape');});
+  el.btnPlayV.addEventListener('click',()=>{SFX.click();startGame('portrait');});
   el.btnAgain.addEventListener('click',()=>{SFX.click();startGame();});
   el.btnResume.addEventListener('click',()=>{SFX.click();togglePause();});
   el.btnQuit.addEventListener('click',()=>{SFX.click();quitRun();});
@@ -775,16 +782,30 @@
   applyMute();
   renderBoard();
 
-  // ---- responsive: fill the screen in landscape; rotate prompt in portrait ----
-  let pausedByRotate=false;
+  // ---- per-orientation field: landscape = wide+short, portrait = narrow+tall; each fills its own screen ----
+  let pausedByRotate=false, rotateMsg=null;
   function fitScreen(){
     let w=innerWidth||0, h=innerHeight||0;
     if(w<2 || h<2){ w=960; h=600; }                  // fallback if viewport isn't measured yet
-    VW = Math.round(clamp(VH*(w/h), 240, 1500));      // match viewport aspect -> fills landscape OR portrait, no distortion
-    if(!isFinite(VW) || VW<240) VW=960;
-    if(c.width!==VW){ c.width=VW; c.height=VH; }
-    player.x=clamp(player.x,0,VW-player.w);
-    ambient.forEach(a=>{ if(a.x>VW) a.x=Math.random()*VW; });
+    if(orient==='portrait'){ VW=540; VH=Math.round(clamp(540*(h/w), 760, 1500)); }
+    else { VH=600; VW=Math.round(clamp(600*(w/h), 700, 1600)); }
+    if(!isFinite(VW)||VW<300) VW=1067;  if(!isFinite(VH)||VH<300) VH=600;
+    if(c.width!==VW||c.height!==VH){ c.width=VW; c.height=VH; }
+    if(player){ player.x=clamp(player.x,0,VW-player.w); player.y=clamp(player.y,0,VH-player.h); }
+    ambient.forEach(a=>{ if(a.x>VW)a.x=Math.random()*VW; if(a.y>VH)a.y=Math.random()*VH; });
+    checkRotate(w,h);
+  }
+  function checkRotate(w,h){
+    if(w===undefined){ w=innerWidth||960; h=innerHeight||600; }
+    const inGame=(S.mode==='playing'||S.mode==='paused');
+    const mismatch=inGame && ((h>w)!==(orient==='portrait')) && matchMedia('(pointer:coarse)').matches;
+    document.body.classList.toggle('show-rotate', mismatch);
+    rotateMsg=rotateMsg||document.querySelector('#rotate .m');
+    if(rotateMsg) rotateMsg.textContent = orient==='portrait'
+      ? 'Hold your phone upright (portrait) for this mode.'
+      : 'Turn your phone sideways (landscape) for this mode.';
+    if(mismatch){ if(S.mode==='playing'){ S.mode='paused'; pausedByRotate=true; try{bgm.pause();}catch(e){} } }
+    else if(pausedByRotate && S.mode==='paused'){ S.mode='playing'; last=performance.now(); if(!S.muted){try{bgm.play().catch(()=>{});}catch(e){}} pausedByRotate=false; }
   }
   addEventListener('resize', fitScreen);
   addEventListener('orientationchange', ()=>setTimeout(fitScreen,250));
