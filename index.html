@@ -259,6 +259,8 @@
   // ============================================================= STATE
   const face = new Image();
   face.src = "player.png";
+  const face2 = new Image();          // second run frame; alternates with face
+  face2.src = "player2.png";
 
   const S = {
     mode:'intro',                 // intro | playing | paused | over
@@ -549,27 +551,39 @@
   // ============================================================= RENDER
   let bgT=0;
   const ambient=Array.from({length:34},()=>({x:Math.random()*VW,y:Math.random()*VH,s:rand(0.6,2.2),sp:rand(8,26)}));
+  // Optional per-level background art: bg/1.jpg .. bg/10.jpg. Any level whose image
+  // isn't present falls back to the procedural synthwave scene below.
+  const bgImgs=[]; for(let i=1;i<=10;i++){ const im=new Image(); im.src='bg/'+i+'.jpg'; bgImgs.push(im); }
+  function drawCover(img){
+    const ir=img.naturalWidth/img.naturalHeight, cr=VW/VH;
+    let dw,dh; if(ir>cr){ dh=VH; dw=VH*ir; } else { dw=VW; dh=VW/ir; }
+    ctx.drawImage(img,(VW-dw)/2,(VH-dh)/2,dw,dh);
+  }
   function drawBackground(dt){
     bgT+=dt;
     const L=LEVELS[S.level-1];
-    const g=ctx.createLinearGradient(0,0,0,VH); g.addColorStop(0,L.c1); g.addColorStop(1,L.c2);
-    ctx.fillStyle=g; ctx.fillRect(0,0,VW,VH);
-    const hy=VH*0.46;
-    // sun
-    ctx.save();
-    const sg=ctx.createRadialGradient(VW/2,hy,8,VW/2,hy,150);
-    sg.addColorStop(0,L.sun); sg.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.globalAlpha=0.55; ctx.fillStyle=sg; ctx.beginPath(); ctx.arc(VW/2,hy,150,0,6.2832); ctx.fill();
-    ctx.restore();
-    // synthwave grid
-    ctx.save(); ctx.strokeStyle=L.grid; ctx.globalAlpha=0.18; ctx.lineWidth=1.5;
-    const vp=VW/2;
-    for(let i=-10;i<=10;i++){ ctx.beginPath(); ctx.moveTo(vp,hy); ctx.lineTo(vp+i*120,VH); ctx.stroke(); }
-    const scroll=(bgT*0.35)%1;
-    for(let i=0;i<14;i++){ const t=(i+scroll)/14; const y=hy+ (VH-hy)*t*t; ctx.globalAlpha=0.05+0.16*t;
-      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(VW,y); ctx.stroke(); }
-    ctx.restore();
-    // ambient particles
+    const img=bgImgs[S.level-1];
+    if(img && img.complete && img.naturalWidth){
+      drawCover(img);
+      ctx.fillStyle='rgba(6,8,30,0.30)'; ctx.fillRect(0,0,VW,VH);   // darken so signs/player stay readable
+    } else {
+      const g=ctx.createLinearGradient(0,0,0,VH); g.addColorStop(0,L.c1); g.addColorStop(1,L.c2);
+      ctx.fillStyle=g; ctx.fillRect(0,0,VW,VH);
+      const hy=VH*0.46;
+      ctx.save();
+      const sg=ctx.createRadialGradient(VW/2,hy,8,VW/2,hy,150);
+      sg.addColorStop(0,L.sun); sg.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.globalAlpha=0.55; ctx.fillStyle=sg; ctx.beginPath(); ctx.arc(VW/2,hy,150,0,6.2832); ctx.fill();
+      ctx.restore();
+      ctx.save(); ctx.strokeStyle=L.grid; ctx.globalAlpha=0.18; ctx.lineWidth=1.5;
+      const vp=VW/2;
+      for(let i=-10;i<=10;i++){ ctx.beginPath(); ctx.moveTo(vp,hy); ctx.lineTo(vp+i*120,VH); ctx.stroke(); }
+      const scroll=(bgT*0.35)%1;
+      for(let i=0;i<14;i++){ const t=(i+scroll)/14; const y=hy+ (VH-hy)*t*t; ctx.globalAlpha=0.05+0.16*t;
+        ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(VW,y); ctx.stroke(); }
+      ctx.restore();
+    }
+    // ambient particles (always)
     ctx.save(); ctx.fillStyle=L.sun; ctx.globalAlpha=0.5;
     for(const a of ambient){ a.y-=a.sp*dt; if(a.y<-4){a.y=VH+4;a.x=Math.random()*VW;} ctx.globalAlpha=0.18+0.3*(a.s/2.2);
       ctx.beginPath(); ctx.arc(a.x,a.y,a.s,0,6.2832); ctx.fill(); }
@@ -578,17 +592,18 @@
 
   function drawPlayer(){
     const cx=player.x+player.w/2, cy=player.y+player.h/2;
-    // full-body runner: keep the sprite's aspect, drawn a little larger than the hitbox
+    // full-body runner: alternate the two frames for a leg-cycling run animation
+    const fr = (face2.complete && face2.naturalWidth && Math.floor(bgT/0.10)%2===1) ? face2 : face;
     const ph = 138;
-    const aspect = (face.naturalWidth && face.naturalHeight) ? face.naturalWidth/face.naturalHeight : 0.62;
+    const aspect = (fr.naturalWidth && fr.naturalHeight) ? fr.naturalWidth/fr.naturalHeight : 0.62;
     const pw = ph*aspect;
-    const loaded = face.complete && face.naturalWidth;
+    const loaded = fr.complete && fr.naturalWidth;
     // motion-blur ghosts of the runner
     if(loaded){
       for(let i=0;i<player.trail.length;i+=2){
         const tp=player.trail[i];
         ctx.save(); ctx.globalAlpha=(i/player.trail.length)*0.18;
-        ctx.drawImage(face, tp.x+player.w/2-pw/2, tp.y+player.h/2-ph/2, pw, ph); ctx.restore();
+        ctx.drawImage(fr, tp.x+player.w/2-pw/2, tp.y+player.h/2-ph/2, pw, ph); ctx.restore();
       }
     }
     // invuln blink
@@ -600,7 +615,7 @@
       ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(cx,cy,ph*0.58,0,6.2832); ctx.fill();
       // lean into the direction of movement
       ctx.translate(cx,cy); ctx.rotate(clamp(player.vx*0.00045,-0.22,0.22)); ctx.translate(-cx,-cy);
-      if(loaded){ ctx.shadowColor='rgba(33,240,255,.55)'; ctx.shadowBlur=12; ctx.drawImage(face, cx-pw/2, cy-ph/2, pw, ph); }
+      if(loaded){ ctx.shadowColor='rgba(33,240,255,.55)'; ctx.shadowBlur=12; ctx.drawImage(fr, cx-pw/2, cy-ph/2, pw, ph); }
       else { ctx.fillStyle='#fff'; ctx.beginPath(); rr(player.x,player.y,player.w,player.h,12); ctx.fill(); }
       ctx.restore();
     }
