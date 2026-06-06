@@ -32,6 +32,7 @@ workflows:
         script: npm ci
       - name: Build web assets and sync iOS
         script: |
+          echo "Node version in use:" && node --version
           npm run build
           npx cap sync ios
       - name: Initialize keychain
