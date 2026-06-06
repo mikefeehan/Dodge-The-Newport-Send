@@ -1,9 +1,14 @@
 # Codemagic CI/CD — builds the iOS app on a cloud Mac (no Mac needed on your end).
 # Capacitor 8 uses Swift Package Manager, so there is NO CocoaPods step.
-# Docs: https://docs.codemagic.io/yaml-quick-start/building-a-capacitor-app/
 #
-# Configured: bundle com.sailwestcapital.dodgenewportsend, App Store Connect key "CodemagicAppStore",
-# Apple ID 6777284091. See IOS_BUILD_GUIDE.md for the full setup notes.
+# Signing uses the explicit App Store Connect API key flow with `--create`, which
+# CREATES the provisioning profile for a brand-new App ID (the automatic ios_signing
+# block only FETCHES an existing one and fails on first build).
+#
+# Requires, set up once in Codemagic (see IOS_BUILD_GUIDE.md):
+#   1. App Store Connect API key integration named  CodemagicAppStore
+#   2. Env var group "appstore_credentials" containing a secure CERTIFICATE_PRIVATE_KEY
+#      (an RSA 2048 private key — generated once, used to create the signing certificate)
 
 workflows:
   ios-app-store:
@@ -13,13 +18,13 @@ workflows:
     integrations:
       app_store_connect: CodemagicAppStore        # name of your App Store Connect API key integration in Codemagic
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.sailwestcapital.dodgenewportsend   # must match your App Store Connect app's Bundle ID
+      groups:
+        - appstore_credentials                     # must contain a secure CERTIFICATE_PRIVATE_KEY variable
       vars:
+        BUNDLE_ID: "com.sailwestcapital.dodgenewportsend"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
-        APP_STORE_APPLE_ID: "6777284091"           # your app's numeric Apple ID from App Store Connect
+        APP_STORE_APPLE_ID: "6777284091"
       node: 20
       xcode: latest
     scripts:
@@ -29,7 +34,16 @@ workflows:
         script: |
           npm run build
           npx cap sync ios
-      - name: Set up code signing
+      - name: Initialize keychain
+        script: keychain initialize
+      - name: Fetch or create signing files (creates the profile + certificate)
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+      - name: Add the signing certificate to the keychain
+        script: keychain add-certificates
+      - name: Apply provisioning profile to the Xcode project
         script: xcode-project use-profiles
       - name: Set build number
         script: |
