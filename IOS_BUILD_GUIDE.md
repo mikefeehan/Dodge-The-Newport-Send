@@ -31,8 +31,8 @@ so the build runs on **Codemagic's cloud Mac**. Here's the whole flow.
 
 ## Step 3 — Add the key to Codemagic
 1. Codemagic → your app → **Settings → Distribution / Code signing / Integrations → App Store Connect**.
-2. Add the key: upload the `.p8`, paste Key ID + Issuer ID. **Name it** (e.g., `CodemagicAppStore`).
-3. Name it **exactly `CodemagicAppStore`** so it matches `codemagic.yaml`.
+2. Add the key: upload the `.p8`, paste Key ID + Issuer ID. **Name it** (e.g., `Codemagic`).
+3. Name it **exactly `Codemagic`** so it matches `codemagic.yaml`.
 
 ## Step 3b — Add a signing certificate private key
 The build *creates* the distribution certificate + provisioning profile, which needs an RSA key.
@@ -48,7 +48,7 @@ The build *creates* the distribution certificate + provisioning profile, which n
 3. Delete the local `codemagic_cert_key` / `.pub` files afterward.
 
 ## Step 4 — placeholders in `codemagic.yaml` (already filled in this repo) ✅
-`app_store_connect: CodemagicAppStore` · `bundle_identifier: com.sailwestcapital.dodgenewportsend` · `APP_STORE_APPLE_ID: 6777284091`
+`app_store_connect: Codemagic` · `bundle_identifier: com.sailwestcapital.dodgenewportsend` · `APP_STORE_APPLE_ID: 6777284091`
 
 ## Step 5 — Build
 - In Codemagic, pick the **`ios-app-store`** workflow and **Start new build** (branch `main`).

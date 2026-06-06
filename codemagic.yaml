@@ -6,7 +6,7 @@
 # block only FETCHES an existing one and fails on first build).
 #
 # Requires, set up once in Codemagic (see IOS_BUILD_GUIDE.md):
-#   1. App Store Connect API key integration named  CodemagicAppStore
+#   1. App Store Connect API key integration named  Codemagic
 #   2. Env var group "appstore_credentials" containing a secure CERTIFICATE_PRIVATE_KEY
 #      (an RSA 2048 private key — generated once, used to create the signing certificate)
 
@@ -16,7 +16,7 @@ workflows:
     instance_type: mac_mini_m2
     max_build_duration: 60
     integrations:
-      app_store_connect: CodemagicAppStore        # name of your App Store Connect API key integration in Codemagic
+      app_store_connect: Codemagic        # name of your App Store Connect API key integration in Codemagic
     environment:
       groups:
         - appstore_credentials                     # must contain a secure CERTIFICATE_PRIVATE_KEY variable
