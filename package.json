@@ -1,0 +1,19 @@
+{
+  "name": "dodge-mikes-newport-send",
+  "version": "1.0.0",
+  "description": "Dodge Mike's Newport Send — neon arcade dodger",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build-web.js",
+    "sync": "npm run build && cap sync",
+    "ios": "npm run build && cap sync ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.4.0",
+    "@capacitor/ios": "^8.4.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.4.0"
+  }
+}

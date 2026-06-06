@@ -1,0 +1,9 @@
+{
+  "appId": "com.bet2sweat.newportsend",
+  "appName": "Dodge Mike's Newport Send",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#0a0b2b"
+  }
+}
