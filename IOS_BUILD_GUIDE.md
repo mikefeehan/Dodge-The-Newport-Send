@@ -7,7 +7,7 @@ so the build runs on **Codemagic's cloud Mac**. Here's the whole flow.
 
 ## What's already done (in this repo)
 - ✅ `package.json` + Capacitor 8 (`@capacitor/core`, `@capacitor/ios`, `@capacitor/cli`)
-- ✅ `capacitor.config.json` — appId **`com.bet2sweat.newportsend`**, appName **Dodge Mike's Newport Send**
+- ✅ `capacitor.config.json` — appId **`com.sailwestcapital.newportsend`**, appName **Dodge Mike's Newport Send**
 - ✅ `ios/` — the Xcode project (uses Swift Package Manager, no CocoaPods)
 - ✅ App icon (Mike's face) + splash baked into the Xcode project
 - ✅ `scripts/build-web.js` — copies the web game into `www/` for the app to bundle
@@ -19,7 +19,7 @@ so the build runs on **Codemagic's cloud Mac**. Here's the whole flow.
 
 ## Step 1 — Register the app in App Store Connect
 1. https://appstoreconnect.apple.com → **Apps → + → New App**.
-2. Platform **iOS**, name **Dodge Mike's Newport Send**, your language, **Bundle ID** = `com.bet2sweat.newportsend`
+2. Platform **iOS**, name **Dodge Mike's Newport Send**, your language, **Bundle ID** = `com.sailwestcapital.newportsend`
    (if that exact Bundle ID isn't in the list: Apple Developer portal → **Identifiers → +** → register it first).
 3. After creating, note the app's numeric **Apple ID** (shown under App Information) — you'll need it.
 
@@ -37,7 +37,7 @@ so the build runs on **Codemagic's cloud Mac**. Here's the whole flow.
 ## Step 4 — Fill the 3 placeholders in `codemagic.yaml`
 Edit these (search for `<-- EDIT`):
 - `app_store_connect: CodemagicAppStore` → the **integration name** you used in Step 3
-- `bundle_identifier: com.bet2sweat.newportsend` → your real Bundle ID (if changed)
+- `bundle_identifier: com.sailwestcapital.newportsend` → your real Bundle ID (if changed)
 - `APP_STORE_APPLE_ID: 0000000000` → the **numeric Apple ID** from Step 1
 
 Commit + push the change.

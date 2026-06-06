@@ -15,7 +15,7 @@ workflows:
     environment:
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.bet2sweat.newportsend   # <-- EDIT: must match your App Store Connect app's Bundle ID
+        bundle_identifier: com.sailwestcapital.newportsend   # must match your App Store Connect app's Bundle ID
       vars:
         XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
