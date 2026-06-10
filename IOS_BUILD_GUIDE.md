@@ -62,7 +62,7 @@ The build *creates* the distribution certificate + provisioning profile, which n
 ---
 
 ## ⚠️ Two things to decide before submitting
-1. **Names:** for Apple review, the real bar names + "Riley Reid" are the biggest rejection risk. The safe list is in `APP_STORE_COPY_SAFE.md` — swapping the `BARS` array in `index.html` is a one-line change. Strong rec for the App Store build.
+1. **Names:** the falling signs use a curated list of real Newport venue names (no person names) in the `BARS` array of `index.html`. Far lower rejection risk than before; if Apple flags a specific name, it's a one-line edit.
 2. **Music rights:** keep niiko x swae's written permission handy in case review asks.
 
 ## Local commands (reference)

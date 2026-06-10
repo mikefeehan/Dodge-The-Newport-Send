@@ -81,7 +81,7 @@ Answer these in App Store Connect → most map to **12+** for the App-Store-safe
 | Unrestricted Web Access | No |
 | **Result** | **12+** |
 
-> If you keep the **real bar names + "Riley Reid"** in the build, expect this to rise to **17+** and carry real rejection risk — see the note at the bottom.
+> The signs use a curated list of real Newport venue names (no person names). The alcohol/nightlife theme keeps this at **12+**.
 
 ---
 
@@ -118,9 +118,7 @@ no account, no location, no contacts/photos/health/payment data.
 
 ---
 
-## ⚠️ Important note on names (Apple risk)
-The **live web version keeps your original real bar names + "Riley Reid"** (your call). For the
-**App Store build specifically**, those are the most likely cause of rejection (real trademarks +
-a real person's name/likeness). The App-Store-safe sign list is in `APP_STORE_COPY_SAFE.md` and is
-a one-line swap in `index.html` (`BARS` array). Recommended: ship the safe-name build to Apple,
-keep the real-name build on the web.
+## Note on names
+The falling signs use a curated list of real Newport Beach venue names (the `BARS` array in
+`index.html`). No person names are used, which removes the biggest rejection risk. Real trademarks
+carry a small residual risk; if Apple ever objects to a specific name, it's a one-line edit.
