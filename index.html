@@ -585,7 +585,8 @@
   function finishVictory(){
     if(S.mode!=='victory') return;
     stopMusic(); S.mode='over';
-    el.oGO.classList.remove('hidden');
+    // reveal the card a beat later so the skip-tap's click can't land on a button
+    setTimeout(()=>{ if(S.mode==='over') el.oGO.classList.remove('hidden'); },150);
   }
   function vExplode(x,y,c){
     for(let i=0;i<46;i++){ const a=rand(0,6.2832), s=rand(50,330);
