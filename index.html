@@ -203,6 +203,7 @@
         <button id="btnPlayV" class="btn pulse">▯&nbsp;Vertical</button>
       </div>
       <div class="copy">Tap one to start — music begins on tap.</div>
+      <div class="copy" id="introStats" style="color:var(--gold); opacity:.9;"></div>
       <button id="btnGCIntro" class="btn alt sm gcbtn hidden">🏆 Game Center</button>
     </div>
   </div>
@@ -214,6 +215,7 @@
       <p class="muted">Catch your breath, Mike.</p>
       <div class="rowbtns">
         <button id="btnResume" class="btn pulse">Resume</button>
+        <button id="btnRestart" class="btn sm">Restart Run</button>
         <button id="btnQuit" class="btn alt sm">Quit Run</button>
       </div>
     </div>
@@ -358,6 +360,33 @@
   function gcShow(){ if(gcReady) GC.showLeaderboard({leaderboardId:GC_LEADERBOARD}).catch(()=>{}); }
   gcInit();
 
+  // ============================================================= APP REVIEW
+  // Ask for an App Store rating once, after the player is clearly invested
+  // (iOS decides whether the prompt actually appears). No-op on web.
+  const REV = (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AppReview) || null;
+  function maybeAskReview(){
+    if(!REV || localStorage.getItem('dd_reviewed')==='1') return;
+    const runs=Number(localStorage.getItem('dd_runs')||0);
+    if(runs>=5 || S.levelsCleared>=5){
+      localStorage.setItem('dd_reviewed','1');
+      setTimeout(()=>{ try{ REV.requestReview().catch(()=>{}); }catch(e){} },1200);
+    }
+  }
+
+  // ============================================================= WAKE LOCK
+  // Keep the screen awake mid-run (tilt players may not touch the screen for
+  // long stretches). Feature-detected; silently unavailable on older iOS.
+  let wakeLock=null;
+  async function wakeOn(){
+    try{
+      if('wakeLock' in navigator && !wakeLock){
+        wakeLock=await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release',()=>{ wakeLock=null; });
+      }
+    }catch(e){}
+  }
+  function wakeOff(){ try{ if(wakeLock) wakeLock.release(); }catch(e){} wakeLock=null; }
+
   // ============================================================= AUDIO
   const bgm = $('bgm');
   let actx=null, fadeId=0;
@@ -459,8 +488,9 @@
     else if(S.level>=5 && r>=0.44 && r<0.58) pattern='express';    // 14% at every level 5+
     let vy=rand(S.speedMin,S.speedMax);
     if(pattern==='express'){ vy*=1.7; }
+    const warn = pattern==='express' ? 0.6 : 0;   // express signs telegraph before dropping
     if(pattern==='drift'){ vx=rand(60,130)*(Math.random()<0.5?-1:1); }
-    const o={x,y:-h,w,h,vy,vx,label,pattern,color:NEON[(Math.random()*NEON.length)|0],scored:false,fs};
+    const o={x,y:-h,w,h,vy,vx,label,pattern,warn,color:NEON[(Math.random()*NEON.length)|0],scored:false,fs};
     if(pattern==='weaver'){                        // snakes side to side on the way down
       o.vy*=0.85;
       o.amp=rand(50,110); o.freq=rand(1.8,2.8); o.t=rand(0,6.2832);
@@ -502,7 +532,7 @@
     resetRun();
     S.mode='playing'; last=performance.now();
     floatText(VW/2,VH/2-40,'LVL 1 · '+LEVELS[0].name,LEVELS[0].sun,30);
-    playMusic();
+    playMusic(); wakeOn();
     checkRotate();
   }
   function nextLevel(){
@@ -519,6 +549,10 @@
     const newBest = Math.floor(S.score)>S.best && S.best>0;
     if(Math.floor(S.score)>S.best){ S.best=Math.floor(S.score); localStorage.setItem('dd_best',S.best); }
     gcSubmit(Math.floor(S.score));
+    wakeOff();
+    localStorage.setItem('dd_runs', String(Number(localStorage.getItem('dd_runs')||0)+1));
+    if(S.level>Number(localStorage.getItem('dd_far')||0)) localStorage.setItem('dd_far', String(S.level));
+    renderIntroStats(); maybeAskReview();
     haptic(victory?'success':'error');
     el.goTitle.textContent = victory ? 'YOU SURVIVED THE SEND 🎉' : 'GAME OVER';
     el.goBest.classList.toggle('hidden', !newBest);
@@ -617,10 +651,10 @@
     if(V.flash>0){ ctx.fillStyle='rgba(255,255,255,'+(clamp(V.flash,0,1)*0.9)+')'; ctx.fillRect(0,0,VW,VH); }
   }
   function togglePause(){
-    if(S.mode==='playing'){ S.mode='paused'; el.oPause.classList.remove('hidden'); try{bgm.pause();}catch(e){} }
-    else if(S.mode==='paused'){ S.mode='playing'; S.countdown=3; el.oPause.classList.add('hidden'); last=performance.now(); if(!S.muted){try{bgm.play().catch(()=>{});}catch(e){}} }
+    if(S.mode==='playing'){ S.mode='paused'; wakeOff(); el.oPause.classList.remove('hidden'); try{bgm.pause();}catch(e){} }
+    else if(S.mode==='paused'){ S.mode='playing'; S.countdown=3; wakeOn(); el.oPause.classList.add('hidden'); last=performance.now(); if(!S.muted){try{bgm.play().catch(()=>{});}catch(e){}} }
   }
-  function quitRun(){ stopMusic(); S.mode='intro'; el.oPause.classList.add('hidden'); el.oIntro.classList.remove('hidden'); }
+  function quitRun(){ stopMusic(); wakeOff(); S.mode='intro'; el.oPause.classList.add('hidden'); el.oIntro.classList.remove('hidden'); }
 
   // auto-pause when tab is hidden (also fixes "frozen" feel on tab switch)
   document.addEventListener('visibilitychange',()=>{ if(document.hidden && S.mode==='playing') togglePause(); });
@@ -692,6 +726,7 @@
     const pcy=player.y+player.h/2;
     for(let i=S.obs.length-1;i>=0;i--){
       const o=S.obs[i];
+      if(o.warn>0){ o.warn-=dt*sm; continue; }   // still telegraphing — parked above the screen
       o.y+=o.vy*dt*sm;
       if(o.pattern==='drift'){ o.x+=o.vx*dt*sm; if(o.x<0){o.x=0;o.vx*=-1;} if(o.x>VW-o.w){o.x=VW-o.w;o.vx*=-1;} }
       else if(o.pattern==='weaver'){ o.t+=dt*sm; o.x=clamp(o.baseX+Math.sin(o.t*o.freq)*o.amp, 0, VW-o.w); }
@@ -818,6 +853,15 @@
 
     // obstacles
     for(const o of S.obs){
+      if(o.warn>0){   // flashing drop marker where an express sign is about to fall
+        if(Math.floor(o.warn*10)%2===0){
+          ctx.save(); ctx.fillStyle=o.color; ctx.shadowColor=o.color; ctx.shadowBlur=14;
+          ctx.font='900 24px Inter, system-ui, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+          ctx.fillText('⚡', o.x+o.w/2, 22);
+          ctx.restore();
+        }
+        continue;
+      }
       ctx.save(); ctx.shadowColor=o.color; ctx.shadowBlur=14;
       ctx.strokeStyle=o.color; ctx.fillStyle='rgba(0,0,0,.30)'; ctx.lineWidth=2;
       rr(o.x,o.y,o.w,o.h,16); ctx.fill(); ctx.stroke();
@@ -898,6 +942,7 @@
   el.btnPlayV.addEventListener('click',()=>{SFX.click();startGame('portrait');});
   el.btnAgain.addEventListener('click',()=>{SFX.click();startGame();});
   el.btnResume.addEventListener('click',()=>{SFX.click();togglePause();});
+  $('btnRestart').addEventListener('click',()=>{SFX.click();startGame();});
   el.btnQuit.addEventListener('click',()=>{SFX.click();quitRun();});
   el.btnPause.addEventListener('click',()=>{SFX.click();togglePause();});
   el.btnMute.addEventListener('click',()=>{S.muted=!S.muted;applyMute();});
@@ -943,8 +988,16 @@
     else if(S.mode==='over') render(true,dt);
     rafId=requestAnimationFrame(loop);
   }
+  function renderIntroStats(){
+    const runs=Number(localStorage.getItem('dd_runs')||0);
+    const far=clamp(Number(localStorage.getItem('dd_far')||0),0,10);
+    $('introStats').textContent = runs>0
+      ? runs+(runs===1?' run':' runs')+' · furthest: LVL '+far+' — '+LEVELS[far-1].name
+      : '';
+  }
   applyMute();
   renderBoard();
+  renderIntroStats();
 
   // ---- per-orientation field: landscape = wide+short, portrait = narrow+tall; each fills its own screen ----
   let pausedByRotate=false, rotateMsg=null;
