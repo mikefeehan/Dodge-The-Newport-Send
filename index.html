@@ -203,6 +203,7 @@
         <button id="btnPlayV" class="btn pulse">▯&nbsp;Vertical</button>
       </div>
       <div class="copy">Tap one to start — music begins on tap.</div>
+      <button id="btnGCIntro" class="btn alt sm gcbtn hidden">🏆 Game Center</button>
     </div>
   </div>
 
@@ -231,6 +232,7 @@
       <div class="leaderboard" id="leaderboard"></div>
       <div class="rowbtns">
         <button id="btnAgain" class="btn pulse">Play Again</button>
+        <button id="btnGC" class="btn alt sm gcbtn hidden">🏆 Leaderboard</button>
         <button id="btnShare" class="btn alt sm">Share</button>
       </div>
       <div class="copy" id="shareMsg"></div>
@@ -338,6 +340,23 @@
       }
     }catch(e){}
   }
+
+  // ============================================================= GAME CENTER
+  // Native Game Center via the in-app GameCenterPlugin (iOS build only; no-op on web).
+  // GC_LEADERBOARD must match the leaderboard ID configured in App Store Connect.
+  const GC = (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.GameCenter) || null;
+  const GC_LEADERBOARD = 'newport_send_high_score';
+  let gcReady = false;
+  function gcInit(){
+    if(!GC) return;
+    GC.authenticate().then(r=>{
+      gcReady = !!(r && r.authenticated);
+      document.querySelectorAll('.gcbtn').forEach(b=>b.classList.toggle('hidden', !gcReady));
+    }).catch(()=>{});
+  }
+  function gcSubmit(score){ if(gcReady && score>0) GC.submitScore({score, leaderboardId:GC_LEADERBOARD}).catch(()=>{}); }
+  function gcShow(){ if(gcReady) GC.showLeaderboard({leaderboardId:GC_LEADERBOARD}).catch(()=>{}); }
+  gcInit();
 
   // ============================================================= AUDIO
   const bgm = $('bgm');
@@ -498,6 +517,7 @@
     S.mode='over';
     const newBest = Math.floor(S.score)>S.best && S.best>0;
     if(Math.floor(S.score)>S.best){ S.best=Math.floor(S.score); localStorage.setItem('dd_best',S.best); }
+    gcSubmit(Math.floor(S.score));
     stopMusic(); victory?SFX.win():SFX.over(); haptic(victory?'success':'error');
     el.goTitle.textContent = victory ? 'YOU SURVIVED THE SEND 🎉' : 'GAME OVER';
     el.goBest.classList.toggle('hidden', !newBest);
@@ -796,6 +816,8 @@
   el.btnQuit.addEventListener('click',()=>{SFX.click();quitRun();});
   el.btnPause.addEventListener('click',()=>{SFX.click();togglePause();});
   el.btnMute.addEventListener('click',()=>{S.muted=!S.muted;applyMute();});
+  $('btnGC').addEventListener('click',()=>{SFX.click();gcShow();});
+  $('btnGCIntro').addEventListener('click',()=>{SFX.click();gcShow();});
   el.saveScore.addEventListener('click',()=>{
     const name=(el.initials.value||'MIK').toUpperCase().slice(0,3);
     const b=getBoard(); b.push({name,score:Math.floor(S.score)}); b.sort((a,c)=>c.score-a.score);
