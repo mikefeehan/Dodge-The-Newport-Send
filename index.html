@@ -57,7 +57,11 @@
   @keyframes rotSpin{ 0%,100%{transform:rotate(-12deg)} 50%{transform:rotate(78deg)} }
 
   /* ---------- HUD ---------- */
-  .topbar{ position:absolute; top:0; left:0; right:0; z-index:4; padding:10px 12px 0; pointer-events:none; }
+  .topbar{ position:absolute; top:0; left:0; right:0; z-index:4; pointer-events:none;
+    padding:calc(10px + env(safe-area-inset-top, 0px))
+            calc(12px + env(safe-area-inset-right, 0px))
+            0
+            calc(12px + env(safe-area-inset-left, 0px)); }
   .hud{
     display:flex; align-items:flex-start; justify-content:space-between; gap:8px;
     font-weight:800; letter-spacing:.5px;
@@ -92,7 +96,11 @@
              background:linear-gradient(90deg, var(--neon), var(--neon2)); box-shadow:0 0 14px var(--neon); }
 
   /* ---------- Overlays ---------- */
-  .overlay{ position:absolute; inset:0; display:grid; place-items:center; z-index:6; padding:16px;
+  .overlay{ position:absolute; inset:0; display:grid; place-items:center; z-index:6;
+            padding:calc(16px + env(safe-area-inset-top, 0px))
+                    calc(16px + env(safe-area-inset-right, 0px))
+                    calc(16px + env(safe-area-inset-bottom, 0px))
+                    calc(16px + env(safe-area-inset-left, 0px));
             background:rgba(4,4,20,.66); }
   .card{
     background:var(--card); border:1px solid rgba(255,255,255,.2); border-radius:18px;
@@ -195,6 +203,8 @@
         <button id="btnPlayV" class="btn pulse">▯&nbsp;Vertical</button>
       </div>
       <div class="copy">Tap one to start — music begins on tap.</div>
+      <div class="copy" id="introStats" style="color:var(--gold); opacity:.9;"></div>
+      <button id="btnGCIntro" class="btn alt sm gcbtn hidden">🏆 Game Center</button>
     </div>
   </div>
 
@@ -205,6 +215,7 @@
       <p class="muted">Catch your breath, Mike.</p>
       <div class="rowbtns">
         <button id="btnResume" class="btn pulse">Resume</button>
+        <button id="btnRestart" class="btn sm">Restart Run</button>
         <button id="btnQuit" class="btn alt sm">Quit Run</button>
       </div>
     </div>
@@ -214,6 +225,7 @@
   <div id="overlayGameOver" class="overlay hidden">
     <div class="card">
       <div class="title" id="goTitle">Game Over</div>
+      <div id="goBest" class="hidden" style="color:var(--gold); font-weight:900; letter-spacing:2px; text-shadow:0 0 14px var(--gold); margin:2px 0 4px;">🏆 NEW PERSONAL BEST!</div>
       <div class="stats" id="goStats"></div>
       <div id="initialsWrap" style="margin-top:6px;">
         <input id="initials" maxlength="3" placeholder="ABC" />
@@ -222,6 +234,7 @@
       <div class="leaderboard" id="leaderboard"></div>
       <div class="rowbtns">
         <button id="btnAgain" class="btn pulse">Play Again</button>
+        <button id="btnGC" class="btn alt sm gcbtn hidden">🏆 Leaderboard</button>
         <button id="btnShare" class="btn alt sm">Share</button>
       </div>
       <div class="copy" id="shareMsg"></div>
@@ -285,7 +298,7 @@
     btnPlayH:$('btnPlayH'), btnPlayV:$('btnPlayV'), btnAgain:$('btnAgain'), btnShare:$('btnShare'), shareMsg:$('shareMsg'),
     btnPause:$('btnPause'), btnResume:$('btnResume'), btnQuit:$('btnQuit'), btnMute:$('btnMute'),
     initials:$('initials'), saveScore:$('saveScore'), board:$('leaderboard'),
-    goTitle:$('goTitle'), goStats:$('goStats'),
+    goTitle:$('goTitle'), goStats:$('goStats'), goBest:$('goBest'), initialsWrap:$('initialsWrap'),
   };
 
   // ============================================================= UTIL
@@ -310,10 +323,69 @@
     slow:0, shield:0, dbl:0, invuln:0,
     shake:0, levelsCleared:0, runTime:0, transition:0,
     muted: localStorage.getItem('dd_muted')==='1',
-    pickupT:0,
+    pickupT:0, countdown:0,
   };
 
   const player = { x:VW/2-36, y:VH-130, w:72, h:72, speed:540, vx:0, vy:0, trail:[] };
+
+  // ============================================================= HAPTICS
+  // Native taps via the Capacitor Haptics plugin inside the iOS app; falls back
+  // to navigator.vibrate where available; silently no-ops on plain web.
+  const HAPT = (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics) || null;
+  function haptic(kind){
+    try{
+      if(HAPT){
+        if(kind==='success'||kind==='error') HAPT.notification({type:kind.toUpperCase()});
+        else HAPT.impact({style:kind.toUpperCase()});           // LIGHT | MEDIUM | HEAVY
+      } else if(navigator.vibrate){
+        navigator.vibrate(kind==='heavy'||kind==='error' ? 60 : kind==='medium'||kind==='success' ? 30 : 12);
+      }
+    }catch(e){}
+  }
+
+  // ============================================================= GAME CENTER
+  // Native Game Center via the in-app GameCenterPlugin (iOS build only; no-op on web).
+  // GC_LEADERBOARD must match the leaderboard ID configured in App Store Connect.
+  const GC = (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.GameCenter) || null;
+  const GC_LEADERBOARD = 'newport_send_high_score';
+  let gcReady = false;
+  function gcInit(){
+    if(!GC) return;
+    GC.authenticate().then(r=>{
+      gcReady = !!(r && r.authenticated);
+      document.querySelectorAll('.gcbtn').forEach(b=>b.classList.toggle('hidden', !gcReady));
+    }).catch(()=>{});
+  }
+  function gcSubmit(score){ if(gcReady && score>0) GC.submitScore({score, leaderboardId:GC_LEADERBOARD}).catch(()=>{}); }
+  function gcShow(){ if(gcReady) GC.showLeaderboard({leaderboardId:GC_LEADERBOARD}).catch(()=>{}); }
+  gcInit();
+
+  // ============================================================= APP REVIEW
+  // Ask for an App Store rating once, after the player is clearly invested
+  // (iOS decides whether the prompt actually appears). No-op on web.
+  const REV = (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AppReview) || null;
+  function maybeAskReview(){
+    if(!REV || localStorage.getItem('dd_reviewed')==='1') return;
+    const runs=Number(localStorage.getItem('dd_runs')||0);
+    if(runs>=5 || S.levelsCleared>=5){
+      localStorage.setItem('dd_reviewed','1');
+      setTimeout(()=>{ try{ REV.requestReview().catch(()=>{}); }catch(e){} },1200);
+    }
+  }
+
+  // ============================================================= WAKE LOCK
+  // Keep the screen awake mid-run (tilt players may not touch the screen for
+  // long stretches). Feature-detected; silently unavailable on older iOS.
+  let wakeLock=null;
+  async function wakeOn(){
+    try{
+      if('wakeLock' in navigator && !wakeLock){
+        wakeLock=await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release',()=>{ wakeLock=null; });
+      }
+    }catch(e){}
+  }
+  function wakeOff(){ try{ if(wakeLock) wakeLock.release(); }catch(e){} wakeLock=null; }
 
   // ============================================================= AUDIO
   const bgm = $('bgm');
@@ -364,11 +436,12 @@
   const keys=new Set();
   const KMAP={arrowleft:'L',a:'L',arrowright:'R',d:'R',arrowup:'U',w:'U',arrowdown:'D',s:'D'};
   addEventListener('keydown',e=>{
+    if(e.target && e.target.tagName==='INPUT') return;   // typing initials shouldn't steer/restart
     const k=e.key.toLowerCase();
     if(KMAP[k]){ keys.add(KMAP[k]); e.preventDefault(); }
     if(k==='p') togglePause();
     if(k==='m'){ S.muted=!S.muted; applyMute(); }
-    if(k===' '||k==='enter'){ if(S.mode==='intro') startGame(); else if(S.mode==='over') startGame(); }
+    if(k===' '||k==='enter'){ if(S.mode==='intro') startGame(); else if(S.mode==='over') startGame(); else if(S.mode==='victory'&&V.t>0.8) finishVictory(); }
   });
   addEventListener('keyup',e=>{ const k=e.key.toLowerCase(); if(KMAP[k]) keys.delete(KMAP[k]); });
 
@@ -386,6 +459,7 @@
   c.addEventListener('touchstart',e=>{ unlockAudio(); const t=e.touches[0]; setPtr(t.clientX,t.clientY); if(e.cancelable)e.preventDefault(); },{passive:false});
   c.addEventListener('touchmove',e=>{ const t=e.touches[0]; setPtr(t.clientX,t.clientY); if(e.cancelable)e.preventDefault(); },{passive:false});
   addEventListener('touchend',()=>{ ptr.active=false; });
+  addEventListener('pointerdown',()=>{ if(S.mode==='victory'&&V.t>0.8) finishVictory(); });
 
   // tilt
   let tiltX=0,tiltY=0,tiltActive=false,baseX=0,baseY=0;
@@ -409,12 +483,21 @@
     const x=rand(0,VW-w);
     let pattern='straight', vx=0;
     const r=Math.random();
-    if(S.level>=3 && r<0.28) pattern='drift';
-    else if(S.level>=5 && r<0.42) pattern='express';
+    if(S.level>=6 && r<0.16) pattern='weaver';
+    else if(S.level>=3 && r>=0.16 && r<0.44) pattern='drift';      // 28% at every level 3+
+    else if(S.level>=5 && r>=0.44 && r<0.58) pattern='express';    // 14% at every level 5+
     let vy=rand(S.speedMin,S.speedMax);
     if(pattern==='express'){ vy*=1.7; }
+    const warn = pattern==='express' ? 0.6 : 0;   // express signs telegraph before dropping
     if(pattern==='drift'){ vx=rand(60,130)*(Math.random()<0.5?-1:1); }
-    S.obs.push({x,y:-h,w,h,vy,vx,label,pattern,color:NEON[(Math.random()*NEON.length)|0],scored:false,fs});
+    const o={x,y:-h,w,h,vy,vx,label,pattern,warn,color:NEON[(Math.random()*NEON.length)|0],scored:false,fs};
+    if(pattern==='weaver'){                        // snakes side to side on the way down
+      o.vy*=0.85;
+      o.amp=rand(50,110); o.freq=rand(1.8,2.8); o.t=rand(0,6.2832);
+      o.baseX=clamp(x, o.amp, Math.max(o.amp, VW-w-o.amp));
+      o.x=clamp(o.baseX+Math.sin(o.t*o.freq)*o.amp, 0, VW-w);
+    }
+    S.obs.push(o);
   }
   function pickPowerup(){
     let r=Math.random()*PW_TOTW;
@@ -439,7 +522,7 @@
   function resetRun(){
     Object.assign(S,{level:1,time:LEVEL_TIME,score:0,lives:START_LIVES,combo:0,bestCombo:0,
       obs:[],pickups:[],parts:[],texts:[],spawnT:0,spawnRate:0.95,speedMin:95,speedMax:150,
-      slow:0,shield:0,dbl:0,invuln:1.2,shake:0,levelsCleared:0,runTime:0,transition:1.4,pickupT:0});
+      slow:0,shield:0,dbl:0,invuln:1.2,shake:0,levelsCleared:0,runTime:0,transition:1.4,pickupT:0,countdown:0});
     player.x=VW/2-player.w/2; player.y=VH-130; player.vx=0; player.vy=0; player.trail.length=0;
   }
   function startGame(o){
@@ -449,23 +532,30 @@
     resetRun();
     S.mode='playing'; last=performance.now();
     floatText(VW/2,VH/2-40,'LVL 1 · '+LEVELS[0].name,LEVELS[0].sun,30);
-    playMusic();
+    playMusic(); wakeOn();
     checkRotate();
   }
   function nextLevel(){
-    if(S.level>=10){ endGame(true); return; }
+    if(S.level>=10){ S.levelsCleared=10; endGame(true); return; }
     S.level++; S.levelsCleared++; S.time=LEVEL_TIME; S.lives=START_LIVES; S.invuln=1.2; S.transition=1.4;
     S.spawnRate=Math.max(0.4,0.95-(S.level-1)*0.06);
     S.speedMin=95+(S.level-1)*12; S.speedMax=150+(S.level-1)*16;
     const L=LEVELS[S.level-1];
     floatText(VW/2,VH/2-40,'LVL '+S.level+' · '+L.name,L.sun,30);
-    SFX.level();
+    SFX.level(); haptic('success');
   }
   function endGame(victory){
     S.mode='over';
+    const newBest = Math.floor(S.score)>S.best && S.best>0;
     if(Math.floor(S.score)>S.best){ S.best=Math.floor(S.score); localStorage.setItem('dd_best',S.best); }
-    stopMusic(); victory?SFX.win():SFX.over();
+    gcSubmit(Math.floor(S.score));
+    wakeOff();
+    localStorage.setItem('dd_runs', String(Number(localStorage.getItem('dd_runs')||0)+1));
+    if(S.level>Number(localStorage.getItem('dd_far')||0)) localStorage.setItem('dd_far', String(S.level));
+    renderIntroStats(); maybeAskReview();
+    haptic(victory?'success':'error');
     el.goTitle.textContent = victory ? 'YOU SURVIVED THE SEND 🎉' : 'GAME OVER';
+    el.goBest.classList.toggle('hidden', !newBest);
     el.goStats.innerHTML =
       `<div><span>Score</span><b>${Math.floor(S.score)}</b></div>`+
       `<div><span>Best</span><b>${S.best}</b></div>`+
@@ -473,29 +563,116 @@
       `<div><span>Best combo</span><b>×${S.bestCombo}</b></div>`+
       `<div><span>Time survived</span><b>${S.runTime.toFixed(1)}s</b></div>`+
       `<div><span>Reached</span><b>${LEVELS[S.level-1].name}</b></div>`;
-    renderBoard(); el.initials.value='';
+    renderBoard(); el.initials.value=''; el.initialsWrap.classList.remove('hidden');
+    if(victory){ startVictory(); return; }   // fireworks first; the card appears when the show ends
+    stopMusic(); SFX.over();
     el.oGO.classList.remove('hidden');
   }
-  function togglePause(){
-    if(S.mode==='playing'){ S.mode='paused'; el.oPause.classList.remove('hidden'); try{bgm.pause();}catch(e){} }
-    else if(S.mode==='paused'){ S.mode='playing'; el.oPause.classList.add('hidden'); last=performance.now(); if(!S.muted){try{bgm.play().catch(()=>{});}catch(e){}} }
+
+  // ============================================================= VICTORY CINEMATIC
+  // Plays after clearing all 10 districts: fireworks, confetti, gold rays behind
+  // Mike, elastic neon title and a score count-up. Tap / space skips after a beat;
+  // otherwise it hands off to the game-over card by itself.
+  const V={t:0,score:0,rockets:[],sparks:[],confetti:[],flash:0,rocketT:0};
+  function startVictory(){
+    S.mode='victory';
+    V.t=0; V.flash=1; V.rocketT=0.2; V.score=Math.floor(S.score);
+    V.rockets.length=0; V.sparks.length=0; V.confetti.length=0;
+    for(let i=0;i<110;i++) V.confetti.push({x:rand(0,VW),y:rand(-VH,-10),w:rand(4,9),l:rand(7,15),
+      c:NEON[(Math.random()*NEON.length)|0],vy:rand(70,180),vx:rand(-40,40),rot:rand(0,6.2832),vr:rand(-4,4)});
+    SFX.win();
   }
-  function quitRun(){ stopMusic(); S.mode='intro'; el.oPause.classList.add('hidden'); el.oIntro.classList.remove('hidden'); }
+  function finishVictory(){
+    if(S.mode!=='victory') return;
+    stopMusic(); S.mode='over';
+    // reveal the card a beat later so the skip-tap's click can't land on a button
+    setTimeout(()=>{ if(S.mode==='over') el.oGO.classList.remove('hidden'); },150);
+  }
+  function vExplode(x,y,c){
+    for(let i=0;i<46;i++){ const a=rand(0,6.2832), s=rand(50,330);
+      V.sparks.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(0.5,1.3),max:1.3,c,size:rand(1.5,3.5)}); }
+    tone(rand(70,140),0.3,'sawtooth',0.10,35); haptic('light');
+  }
+  function stepVictory(dt){
+    V.t+=dt;
+    if(V.flash>0) V.flash-=dt*1.6;
+    if(V.t<7){ V.rocketT-=dt; if(V.rocketT<=0){ V.rocketT=rand(0.25,0.55);
+      V.rockets.push({x:rand(VW*0.12,VW*0.88),y:VH+12,vy:rand(500,760),ty:rand(VH*0.12,VH*0.5),c:NEON[(Math.random()*NEON.length)|0]}); } }
+    for(let i=V.rockets.length-1;i>=0;i--){ const r=V.rockets[i]; r.y-=r.vy*dt;
+      if(r.y<=r.ty){ vExplode(r.x,r.y,r.c); V.rockets.splice(i,1); } }
+    for(let i=V.sparks.length-1;i>=0;i--){ const q=V.sparks[i]; q.x+=q.vx*dt; q.y+=q.vy*dt; q.vy+=170*dt; q.life-=dt; if(q.life<=0)V.sparks.splice(i,1); }
+    for(const f of V.confetti){ f.y+=f.vy*dt; f.x+=(f.vx+Math.sin(V.t*2+f.rot)*22)*dt; f.rot+=f.vr*dt;
+      if(f.y>VH+16){ f.y=-14; f.x=rand(0,VW); } }
+    if(V.t>=9) finishVictory();
+    else renderVictory(dt);
+  }
+  function renderVictory(dt){
+    ctx.setTransform(1,0,0,1,0,0);
+    drawBackground(dt);
+    ctx.fillStyle='rgba(4,4,22,.42)'; ctx.fillRect(0,0,VW,VH);
+    // rockets going up
+    for(const r of V.rockets){ ctx.save(); ctx.strokeStyle=r.c; ctx.lineWidth=2.5; ctx.shadowColor=r.c; ctx.shadowBlur=10;
+      ctx.beginPath(); ctx.moveTo(r.x,r.y); ctx.lineTo(r.x,r.y+16); ctx.stroke(); ctx.restore(); }
+    // firework sparks
+    for(const q of V.sparks){ ctx.save(); ctx.globalAlpha=clamp(q.life/q.max,0,1); ctx.fillStyle=q.c;
+      ctx.shadowColor=q.c; ctx.shadowBlur=8; ctx.beginPath(); ctx.arc(q.x,q.y,q.size,0,6.2832); ctx.fill(); ctx.restore(); }
+    // Mike's victory lap: rotating gold rays + bouncing runner
+    const mx=VW/2, my=VH*0.74, bounce=Math.abs(Math.sin(V.t*3.4))*26;
+    ctx.save(); ctx.translate(mx,my-70-bounce); ctx.rotate(V.t*0.7); ctx.globalAlpha=0.14; ctx.fillStyle='#ffd166';
+    for(let i=0;i<12;i++){ ctx.rotate(Math.PI/6);
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(260,-26); ctx.lineTo(260,26); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+    const fr=(face2.complete&&face2.naturalWidth&&Math.floor(V.t/0.12)%2===1)?face2:face;
+    if(fr.complete&&fr.naturalWidth){ const ph=170, pw=ph*(fr.naturalWidth/fr.naturalHeight);
+      ctx.save(); ctx.translate(mx,my-bounce); ctx.rotate(Math.sin(V.t*3.4)*0.12);
+      ctx.shadowColor='#ffd166'; ctx.shadowBlur=22; ctx.drawImage(fr,-pw/2,-ph+40,pw,ph); ctx.restore(); }
+    // confetti falls over everything
+    for(const f of V.confetti){ ctx.save(); ctx.translate(f.x,f.y); ctx.rotate(f.rot); ctx.fillStyle=f.c;
+      ctx.globalAlpha=0.9; ctx.fillRect(-f.w/2,-f.l/2,f.w,f.l); ctx.restore(); }
+    // elastic neon title
+    const k=Math.min(1,V.t/0.9), ease=1-Math.pow(1-k,3), pulse=1+Math.sin(V.t*5)*0.02;
+    ctx.save(); ctx.translate(VW/2,VH*0.28); ctx.scale(ease*pulse,ease*pulse);
+    ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#fff';
+    ctx.font='900 '+Math.round(Math.min(VW*0.085,64))+'px Inter, system-ui, sans-serif';
+    ctx.shadowColor='#ff3bff'; ctx.shadowBlur=34; ctx.fillText('YOU SURVIVED',0,-34);
+    ctx.shadowColor='#21f0ff'; ctx.fillText('THE SEND',0,34);
+    ctx.restore();
+    if(V.t>0.8){ ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.globalAlpha=Math.min(1,(V.t-0.8)/0.5);
+      ctx.fillStyle='#ffd166'; ctx.shadowColor='#ffd166'; ctx.shadowBlur=14;
+      ctx.font='800 '+Math.round(Math.min(VW*0.03,20))+'px Inter, system-ui, sans-serif';
+      ctx.fillText('ALL 10 DISTRICTS CLEARED', VW/2, VH*0.28+92);
+      const shown=Math.floor(Math.min(1,Math.max(0,(V.t-1.1)/1.8))*V.score);
+      ctx.font='900 '+Math.round(Math.min(VW*0.055,40))+'px Inter, system-ui, sans-serif';
+      ctx.fillStyle='#fff'; ctx.shadowColor='#ffd166';
+      ctx.fillText(shown.toLocaleString()+' PTS', VW/2, VH*0.28+140);
+      ctx.restore(); }
+    if(V.t>2.2 && Math.sin(V.t*4)>0){ ctx.save(); ctx.textAlign='center'; ctx.fillStyle='rgba(255,255,255,.85)';
+      ctx.font='700 14px Inter, system-ui, sans-serif'; ctx.fillText('TAP TO CONTINUE', VW/2, VH-26); ctx.restore(); }
+    if(V.flash>0){ ctx.fillStyle='rgba(255,255,255,'+(clamp(V.flash,0,1)*0.9)+')'; ctx.fillRect(0,0,VW,VH); }
+  }
+  function togglePause(){
+    if(S.mode==='playing'){ S.mode='paused'; wakeOff(); el.oPause.classList.remove('hidden'); try{bgm.pause();}catch(e){} }
+    else if(S.mode==='paused'){ S.mode='playing'; S.countdown=3; wakeOn(); el.oPause.classList.add('hidden'); last=performance.now(); if(!S.muted){try{bgm.play().catch(()=>{});}catch(e){}} }
+  }
+  function quitRun(){ stopMusic(); wakeOff(); S.mode='intro'; el.oPause.classList.add('hidden'); el.oIntro.classList.remove('hidden'); }
 
   // auto-pause when tab is hidden (also fixes "frozen" feel on tab switch)
   document.addEventListener('visibilitychange',()=>{ if(document.hidden && S.mode==='playing') togglePause(); });
+  // ...and when the app/window loses focus (incoming call, app switcher, alt-tab)
+  addEventListener('blur',()=>{ if(S.mode==='playing') togglePause(); });
 
   // ============================================================= UPDATE
   function hit(){
     if(S.mode!=='playing' || S.invuln>0) return;
-    if(S.shield>0){ S.shield=0; S.invuln=0.6; burst(player.x+player.w/2,player.y+player.h/2,'#00ffaa',24,260); SFX.pickup(); S.shake=8; return; }
+    if(S.shield>0){ S.shield=0; S.invuln=0.6; burst(player.x+player.w/2,player.y+player.h/2,'#00ffaa',24,260); SFX.pickup(); S.shake=8; haptic('medium'); return; }
     S.lives--; S.combo=0; S.invuln=1.5; S.shake=18;
-    burst(player.x+player.w/2,player.y+player.h/2,'#ff4d6d',40,360); SFX.hit();
+    burst(player.x+player.w/2,player.y+player.h/2,'#ff4d6d',40,360); SFX.hit(); haptic('heavy');
     if(S.lives<=0) endGame(false);
   }
   function collectPickup(p){
     const k=p.def.key;
-    burst(p.x,p.y,p.def.color,18,220); SFX.pickup();
+    burst(p.x,p.y,p.def.color,18,220); SFX.pickup(); haptic('light');
     S.combo++; if(S.combo>S.bestCombo)S.bestCombo=S.combo;
     if(k==='slow') S.slow=p.def.dur;
     else if(k==='shield') S.shield=p.def.dur;
@@ -550,8 +727,10 @@
     const pcy=player.y+player.h/2;
     for(let i=S.obs.length-1;i>=0;i--){
       const o=S.obs[i];
+      if(o.warn>0){ o.warn-=dt*sm; continue; }   // still telegraphing — parked above the screen
       o.y+=o.vy*dt*sm;
       if(o.pattern==='drift'){ o.x+=o.vx*dt*sm; if(o.x<0){o.x=0;o.vx*=-1;} if(o.x>VW-o.w){o.x=VW-o.w;o.vx*=-1;} }
+      else if(o.pattern==='weaver'){ o.t+=dt*sm; o.x=clamp(o.baseX+Math.sin(o.t*o.freq)*o.amp, 0, VW-o.w); }
       // collision (remove the offending sign so it can't re-trigger next frame)
       if(phx<o.x+o.w && phx+phw>o.x && phy<o.y+o.h && phy+phh>o.y){ hit(); S.obs.splice(i,1); continue; }
       // near-miss (passed below player without colliding)
@@ -561,7 +740,7 @@
         if(gap>=0 && gap<46){
           S.combo++; if(S.combo>S.bestCombo)S.bestCombo=S.combo;
           const pts=Math.round(12*comboMult()*(S.dbl>0?2:1));
-          S.score+=pts; SFX.near();
+          S.score+=pts; SFX.near(); haptic('light');
           floatText(player.x+player.w/2,player.y-6,'NEAR MISS +'+pts,'#ffd166',16);
         }
       }
@@ -675,6 +854,15 @@
 
     // obstacles
     for(const o of S.obs){
+      if(o.warn>0){   // flashing drop marker where an express sign is about to fall
+        if(Math.floor(o.warn*10)%2===0){
+          ctx.save(); ctx.fillStyle=o.color; ctx.shadowColor=o.color; ctx.shadowBlur=14;
+          ctx.font='900 24px Inter, system-ui, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+          ctx.fillText('⚡', o.x+o.w/2, 22);
+          ctx.restore();
+        }
+        continue;
+      }
       ctx.save(); ctx.shadowColor=o.color; ctx.shadowBlur=14;
       ctx.strokeStyle=o.color; ctx.fillStyle='rgba(0,0,0,.30)'; ctx.lineWidth=2;
       rr(o.x,o.y,o.w,o.h,16); ctx.fill(); ctx.stroke();
@@ -755,14 +943,19 @@
   el.btnPlayV.addEventListener('click',()=>{SFX.click();startGame('portrait');});
   el.btnAgain.addEventListener('click',()=>{SFX.click();startGame();});
   el.btnResume.addEventListener('click',()=>{SFX.click();togglePause();});
+  $('btnRestart').addEventListener('click',()=>{SFX.click();startGame();});
   el.btnQuit.addEventListener('click',()=>{SFX.click();quitRun();});
   el.btnPause.addEventListener('click',()=>{SFX.click();togglePause();});
   el.btnMute.addEventListener('click',()=>{S.muted=!S.muted;applyMute();});
+  $('btnGC').addEventListener('click',()=>{SFX.click();gcShow();});
+  $('btnGCIntro').addEventListener('click',()=>{SFX.click();gcShow();});
   el.saveScore.addEventListener('click',()=>{
     const name=(el.initials.value||'MIK').toUpperCase().slice(0,3);
     const b=getBoard(); b.push({name,score:Math.floor(S.score)}); b.sort((a,c)=>c.score-a.score);
     setBoard(b); renderBoard(); el.initials.value='';
+    el.initialsWrap.classList.add('hidden');            // one save per run
   });
+  el.initials.addEventListener('keydown',e=>{ if(e.key==='Enter') el.saveScore.click(); });
   el.btnShare.addEventListener('click',async()=>{
     const txt='I scored '+Math.floor(S.score)+' dodging Mike’s Newport Send! '+location.href;
     try{
@@ -772,18 +965,40 @@
   });
 
   // ============================================================= MAIN LOOP
-  let last=performance.now(), rafId=0;
+  let last=performance.now(), rafId=0, cdShown=0;
+  function drawCountdown(){
+    const n=Math.ceil(S.countdown);
+    if(n!==cdShown){ cdShown=n; SFX.click(); }
+    ctx.save();
+    ctx.fillStyle='rgba(4,4,20,.35)'; ctx.fillRect(0,0,VW,VH);
+    ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.shadowColor='#21f0ff'; ctx.shadowBlur=30;
+    const k=1-(S.countdown-Math.floor(S.countdown));            // 0→1 inside each second
+    ctx.font='900 '+Math.round(90+40*k)+'px Inter, system-ui, sans-serif';
+    ctx.fillText(String(n), VW/2, VH/2);
+    ctx.restore();
+  }
   function loop(ts){
     let dt=(ts-last)/1000; last=ts;
     if(!isFinite(dt)||dt<0) dt=0.016; dt=Math.min(dt,0.05);
-    if(S.mode==='playing'){ step(dt); render(false,dt); }
+    if(S.mode==='playing' && S.countdown>0){ S.countdown-=dt; render(false,dt); drawCountdown(); }
+    else if(S.mode==='playing'){ step(dt); render(false,dt); }
+    else if(S.mode==='victory') stepVictory(dt);
     else if(S.mode==='intro') renderAttract(dt);
     else if(S.mode==='paused') render(true,dt);
     else if(S.mode==='over') render(true,dt);
     rafId=requestAnimationFrame(loop);
   }
+  function renderIntroStats(){
+    const runs=Number(localStorage.getItem('dd_runs')||0);
+    const far=clamp(Number(localStorage.getItem('dd_far')||0),0,10);
+    $('introStats').textContent = runs>0
+      ? runs+(runs===1?' run':' runs')+' · furthest: LVL '+far+' — '+LEVELS[far-1].name
+      : '';
+  }
   applyMute();
   renderBoard();
+  renderIntroStats();
 
   // ---- per-orientation field: landscape = wide+short, portrait = narrow+tall; each fills its own screen ----
   let pausedByRotate=false, rotateMsg=null;
@@ -808,19 +1023,25 @@
       ? 'Hold your phone upright (portrait) for this mode.'
       : 'Turn your phone sideways (landscape) for this mode.';
     if(mismatch){ if(S.mode==='playing'){ S.mode='paused'; pausedByRotate=true; try{bgm.pause();}catch(e){} } }
-    else if(pausedByRotate && S.mode==='paused'){ S.mode='playing'; last=performance.now(); if(!S.muted){try{bgm.play().catch(()=>{});}catch(e){}} pausedByRotate=false; }
+    else if(pausedByRotate && S.mode==='paused'){ S.mode='playing'; S.countdown=3; last=performance.now(); if(!S.muted){try{bgm.play().catch(()=>{});}catch(e){}} pausedByRotate=false; }
   }
   addEventListener('resize', fitScreen);
   addEventListener('orientationchange', ()=>setTimeout(fitScreen,250));
   fitScreen();
 
-  // ---- 5-second logo splash, then reveal the start screen ----
-  setTimeout(()=>{ const sp=document.getElementById('splash'); if(sp){ sp.classList.add('fade'); setTimeout(()=>sp.remove(),700); } }, 5000);
+  // ---- short logo splash (tap to skip), then reveal the start screen ----
+  (function(){
+    const sp=document.getElementById('splash'); if(!sp) return;
+    let gone=false;
+    const hide=()=>{ if(gone) return; gone=true; sp.classList.add('fade'); setTimeout(()=>sp.remove(),700); };
+    sp.addEventListener('pointerdown',hide);
+    setTimeout(hide, 2500);
+  })();
 
   rafId=requestAnimationFrame(loop);
 
   // tiny debug handle (harmless): lets the game be driven/inspected headlessly
-  window.__DODGE__={ S, player, start:startGame, step:dt=>{ if(S.mode==='playing')step(dt); }, draw:()=>render(false,0.016), attract:()=>renderAttract(0.016), hit, key:k=>keys.add(k), unkey:k=>keys.delete(k) };
+  window.__DODGE__={ S, player, V, start:startGame, step:dt=>{ if(S.mode==='playing')step(dt); }, draw:()=>render(false,0.016), attract:()=>renderAttract(0.016), hit, key:k=>keys.add(k), unkey:k=>keys.delete(k) };
 })();
 </script>
 </body>
