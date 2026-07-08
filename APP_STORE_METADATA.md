@@ -38,8 +38,10 @@ FEATURES
 - Fast, simple one-finger arcade dodging
 - Power-ups: Slow, Shield, VIP Clear, 2x Score, and Extra Life
 - Near-miss combo scoring for huge points
-- Drag to steer, tilt the phone, or use keyboard/mouse on desktop
+- Drag to steer, or use keyboard/mouse on desktop
+- Game Center leaderboard — compete for the top Send score
 - Local Top-5 leaderboard, saved on your device
+- Haptic feedback and an epic victory celebration
 - Synthwave neon visuals and party arcade energy
 - No account required. Plays offline.
 
@@ -85,12 +87,20 @@ Answer these in App Store Connect → most map to **12+** for the App-Store-safe
 
 ---
 
-## App Privacy ("nutrition label")
-Answer: **"No, we do not collect data from this app."** → label shows **Data Not Collected.**
+## App Privacy ("nutrition label") — updated for v1.1 (Game Center)
+Local data (high scores, initials, mute setting, best-run stats) stays **on-device** — that part
+is unchanged: no analytics, no ads, no tracking, no location, no contacts/photos/health/payment data.
 
-Everything (high scores, initials, mute setting, best-run stats) is stored **locally** on the
-device via browser/local storage. Nothing is sent to a server. No analytics, no ads, no tracking,
-no account, no location, no contacts/photos/health/payment data.
+**But v1.1 adds Game Center**, which submits run scores to Apple when the player is signed in, so
+"Data Not Collected" is no longer accurate. In App Store Connect → App Privacy declare:
+
+| Data type | Collected? | Linked to identity | Tracking | Purpose |
+|-----------|-----------|--------------------|----------|---------|
+| Identifiers → User ID (Game Center player) | Yes | Yes (to the Game Center account) | No | App Functionality |
+| Usage Data → Product Interaction (submitted scores) | Yes | Yes (leaderboard entries) | No | App Functionality |
+
+Everything else: **Not collected.** Note in the optional text that Game Center is optional and
+handled by Apple; the developer runs no servers.
 
 ---
 

@@ -13,16 +13,19 @@ The player controls Mike through 10 themed districts, collects power-ups, builds
 - 3 lives per level
 - Lives reset at the start of each new level
 - Score carries across the full run
+- Victory celebration after clearing all 10 levels
 - Local Top-5 leaderboard
+- Game Center leaderboard (optional, iOS)
+- Haptic feedback
 - No account required
 
 ## Data and accounts
 
-The current version does not require an account.
+The app does not require an account.
 
-High scores, initials, mute settings, and best-run stats are stored locally on the player's device or browser.
+High scores, initials, mute settings, and best-run stats are stored locally on the player's device.
 
-The current version does not use an online leaderboard.
+The app supports Apple Game Center: if the player is signed in, the final score of each run is submitted to the `newport_send_high_score` Game Center leaderboard. Game Center is optional — signed-out players get the full game with the local leaderboard only. No other online services are used.
 
 ## Monetization
 

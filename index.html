@@ -304,7 +304,6 @@
   // ============================================================= UTIL
   const rand=(a,b)=>a+Math.random()*(b-a);
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-  const dz=(v,d=0.18)=>Math.abs(v)<d?0:v;
   const lerp=(a,b,t)=>a+(b-a)*t;
 
   // ============================================================= STATE
@@ -374,8 +373,8 @@
   }
 
   // ============================================================= WAKE LOCK
-  // Keep the screen awake mid-run (tilt players may not touch the screen for
-  // long stretches). Feature-detected; silently unavailable on older iOS.
+  // Keep the screen awake mid-run (steering uses light touches the OS may not
+  // count as activity). Feature-detected; silently unavailable on older iOS.
   let wakeLock=null;
   async function wakeOn(){
     try{
@@ -460,16 +459,6 @@
   c.addEventListener('touchmove',e=>{ const t=e.touches[0]; setPtr(t.clientX,t.clientY); if(e.cancelable)e.preventDefault(); },{passive:false});
   addEventListener('touchend',()=>{ ptr.active=false; });
   addEventListener('pointerdown',()=>{ if(S.mode==='victory'&&V.t>0.8) finishVictory(); });
-
-  // tilt
-  let tiltX=0,tiltY=0,tiltActive=false,baseX=0,baseY=0;
-  function askMotion(){
-    try{
-      if(typeof DeviceMotionEvent!=='undefined' && typeof DeviceMotionEvent.requestPermission==='function') DeviceMotionEvent.requestPermission().catch(()=>{});
-      if(typeof DeviceOrientationEvent!=='undefined' && typeof DeviceOrientationEvent.requestPermission==='function') DeviceOrientationEvent.requestPermission().catch(()=>{});
-    }catch(e){}
-  }
-  addEventListener('deviceorientation',e=>{ tiltActive=true; if(e.gamma!=null)tiltX=e.gamma; if(e.beta!=null)tiltY=e.beta; });
 
   // ============================================================= SPAWNING
   function spawnObstacle(){
@@ -932,10 +921,11 @@
   function setBoard(a){ localStorage.setItem('dd_board',JSON.stringify(a.slice(0,5))); }
   function renderBoard(){
     const b=getBoard().slice(0,5);
-    let h='<strong>🏆 Top Runs</strong><ol>';
-    if(!b.length) h+='<li>No scores yet — be the first!</li>';
-    for(const r of b) h+='<li>'+r.name+' — '+Number(r.score).toLocaleString()+'</li>';
-    el.board.innerHTML=h+'</ol>';
+    el.board.innerHTML='<strong>🏆 Top Runs</strong><ol></ol>';
+    const ol=el.board.querySelector('ol');
+    const add=t=>{ const li=document.createElement('li'); li.textContent=t; ol.appendChild(li); };
+    if(!b.length) add('No scores yet — be the first!');
+    for(const r of b) add(r.name+' — '+Number(r.score).toLocaleString());
   }
 
   // ============================================================= WIRING

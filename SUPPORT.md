@@ -15,8 +15,7 @@ Please include:
 Common fixes:
 
 - Press Play before expecting music to start. Browsers usually require a tap before audio can play.
-- On iPhone, allow motion access when prompted if using tilt controls.
 - Use arrows or WASD on desktop, or just move the mouse.
-- On mobile, drag anywhere to steer, or tilt the phone. If tilt feels too sensitive, hold the phone steadier or use touch-drag instead.
+- On mobile, drag anywhere on the screen to steer — Mike follows your finger, so your thumb doesn't need to cover him.
 - Press P to pause and M to mute at any time.
 - If saved scores look wrong, clear browser storage and restart the game.

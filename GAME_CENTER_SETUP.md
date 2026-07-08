@@ -26,7 +26,15 @@ On the **version page** for 1.1 (the same page where you fill in "What's New"),
 scroll to the **Game Center** section, enable it, and add the
 `newport_send_high_score` leaderboard to the version. Submit the version as usual.
 
-## 3. Test before release
+## 3. Update the App Privacy labels (required for 1.1)
+
+Game Center submits scores to Apple, so the old "Data Not Collected" label is no longer accurate.
+App Store Connect → **App Privacy** → declare **Identifiers → User ID** and **Usage Data →
+Product Interaction**, both *linked to identity*, *not used for tracking*, purpose *App
+Functionality*. See the table in `APP_STORE_METADATA.md` for the exact answers. The hosted
+privacy policy (`privacy.html`) already covers Game Center.
+
+## 4. Test before release
 
 - Internal TestFlight build → launch the app → iOS should show the Game Center
   sign-in bubble ("Welcome back, ...") at the top.
