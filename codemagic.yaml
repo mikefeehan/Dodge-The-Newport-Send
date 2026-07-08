@@ -48,8 +48,15 @@ workflows:
         script: xcode-project use-profiles
       - name: Set build number
         script: |
+          # Fail loudly if the lookup breaks — the old `|| new-version 1` fallback
+          # would stamp build 1, which App Store Connect rejects as a duplicate.
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID")
+          if ! [[ "$LATEST" =~ ^[0-9]+$ ]]; then
+            echo "ERROR: could not fetch latest TestFlight build number (got: '$LATEST')" >&2
+            exit 1
+          fi
           cd ios/App
-          agvtool new-version -all $(($(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID") + 1)) || agvtool new-version -all 1
+          agvtool new-version -all $((LATEST + 1))
       - name: Build signed .ipa
         script: |
           xcode-project build-ipa \

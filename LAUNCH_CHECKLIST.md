@@ -17,14 +17,14 @@
 - Add clear Play Now link near the top.
 - Keep `PRIVACY_POLICY.md`, `TERMS.md`, and `SUPPORT.md` in the repo root.
 - Add a short repo description in GitHub settings:
-  `A neon Newport Beach arcade dodger where Mike survives falling bar signs, tilt controls, and 10 levels of Send energy.`
+  `A neon Newport Beach arcade dodger where Mike survives falling bar signs, near-miss combos, and 10 levels of Send energy.`
 
 ## Game polish
 
 - Add a How to Play modal or clearer intro copy.
 - Make the mobile settings button easy to tap.
 - Keep score, best score, level, and time visible on all screen sizes.
-- Confirm tilt controls work after motion permission.
+- Confirm touch-drag steering works on mobile.
 - Confirm arrows/WASD work on desktop.
 - Confirm Share Link works on mobile.
 - Confirm local score saving works after refresh.
@@ -66,17 +66,20 @@
 10. Refresh page.
 11. Confirm best score persists.
 12. Try Share Link.
-13. Repeat on mobile with tilt.
+13. Repeat on mobile with touch-drag.
 
 ## Nice-to-have future upgrades
 
-- Online leaderboard.
 - Difficulty selector.
 - Character select.
 - More Newport levels.
 - Daily challenge mode.
 - Screenshot share card.
 - Sound effects toggle.
-- Haptics on mobile.
-- Start countdown.
 - App Store landing page.
+
+## Done in v1.1
+
+- ~~Online leaderboard~~ — Game Center (`GAME_CENTER_SETUP.md`).
+- ~~Haptics on mobile~~ — native haptics in the iOS app.
+- ~~Start countdown~~ — 3-2-1 resume countdown after pausing.
