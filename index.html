@@ -252,6 +252,7 @@
   "use strict";
   // ============================================================= CONFIG
   let VW = 1067, VH = 600, orient = 'landscape';   // chosen orientation sets the field shape (computed in fitScreen)
+  let DPR = 1;   // backing-store scale for retina sharpness; capped at 2 to bound fill cost
   const LEVEL_TIME = 30;
   const START_LIVES = 3, MAX_LIVES = 5;
 
@@ -596,7 +597,7 @@
     else renderVictory(dt);
   }
   function renderVictory(dt){
-    ctx.setTransform(1,0,0,1,0,0);
+    ctx.setTransform(DPR,0,0,DPR,0,0);
     drawBackground(dt);
     ctx.fillStyle='rgba(4,4,22,.42)'; ctx.fillRect(0,0,VW,VH);
     // rockets going up
@@ -835,7 +836,7 @@
   function rr(x,y,w,h,r){ if(ctx.roundRect){ctx.beginPath();ctx.roundRect(x,y,w,h,r);} else {ctx.beginPath();ctx.rect(x,y,w,h);} }
 
   function render(dimmed,dt){
-    ctx.setTransform(1,0,0,1,0,0);
+    ctx.setTransform(DPR,0,0,DPR,0,0);
     // screen shake
     let sx=0,sy=0; if(S.shake>0){ sx=rand(-S.shake,S.shake); sy=rand(-S.shake,S.shake); }
     drawBackground(dt||0.016); // bg drawn before shake so edges stay covered
@@ -886,7 +887,7 @@
   }
 
   function renderAttract(dt){
-    ctx.setTransform(1,0,0,1,0,0);
+    ctx.setTransform(DPR,0,0,DPR,0,0);
     drawBackground(dt);
     const bob=Math.sin(performance.now()/500)*7;
     player.y=VH-130+bob; player.trail.length=0;
@@ -998,7 +999,10 @@
     if(orient==='portrait'){ VW=540; VH=Math.round(clamp(540*(h/w), 760, 1500)); }
     else { VH=600; VW=Math.round(clamp(600*(w/h), 700, 1600)); }
     if(!isFinite(VW)||VW<300) VW=1067;  if(!isFinite(VH)||VH<300) VH=600;
-    if(c.width!==VW||c.height!==VH){ c.width=VW; c.height=VH; }
+    // retina: back the canvas at up to 2x device pixels; all game coords stay logical
+    DPR=clamp(window.devicePixelRatio||1,1,2);
+    const bw=Math.round(VW*DPR), bh=Math.round(VH*DPR);
+    if(c.width!==bw||c.height!==bh){ c.width=bw; c.height=bh; }
     if(player){ player.x=clamp(player.x,0,VW-player.w); player.y=clamp(player.y,0,VH-player.h); }
     ambient.forEach(a=>{ if(a.x>VW)a.x=Math.random()*VW; if(a.y>VH)a.y=Math.random()*VH; });
     checkRotate(w,h);
