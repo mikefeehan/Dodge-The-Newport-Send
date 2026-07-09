@@ -4,7 +4,7 @@
 
 - Add 5 gameplay screenshots to the repo and App Store listing.
 - Add one short gameplay GIF or 15–30 second trailer.
-- Confirm the soundtrack is cleared for public release and App Store use.
+- ~~Confirm the soundtrack is cleared for public release and App Store use.~~ — cleared; used with permission from Niiko x SWAE.
 - Make sure README gameplay details match the live game exactly.
 - Test on iPhone Safari, Android Chrome, desktop Chrome, and desktop Safari.
 - Test GitHub Pages after every major change.
