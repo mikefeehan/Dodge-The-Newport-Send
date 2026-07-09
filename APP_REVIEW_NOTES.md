@@ -33,6 +33,11 @@ The current version does not include in-app purchases.
 
 The current version does not include ads.
 
+## Rights and licensing
+
+All artwork and code are original to the developer. The in-game soundtrack is used
+with the permission of the artists (Niiko x SWAE).
+
 ## Support
 
 Support contact: support@bet2sweat.com

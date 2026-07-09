@@ -36,7 +36,10 @@ You play as Mike, weaving through falling glowing signs across 10 themed distric
 FEATURES
 - 10 Newport-inspired neon districts, each with its own look and rising difficulty
 - Fast, simple one-finger arcade dodging
-- Power-ups: Slow, Shield, VIP Clear, 2x Score, and Extra Life
+- 7 power-ups: Slow, Shield, VIP Clear, 2x Score, Extra Life, Ghost, and Magnet
+- Coin chains to grab for quick points and combo fuel
+- Boss showdowns at levels 5 and 10 — dodge aimed shots and slamming signs
+- Evolving hazards: drifting, splitting, express, weaving, and homing signs
 - Near-miss combo scoring for huge points
 - Drag to steer, or use keyboard/mouse on desktop
 - Game Center leaderboard — compete for the top Send score
@@ -46,6 +49,20 @@ FEATURES
 - No account required. Plays offline.
 
 Simple to learn. Hard to survive. Built for quick runs, big scores, and maximum Send energy.
+```
+
+**What's New** (version 2.0 release notes, ≤4000 chars) — paste into the "What's New in This Version" field
+```
+Version 2.0 — the biggest Send yet!
+
+- BOSS SHOWDOWNS: survive THE BOUNCER at level 5 and LAST CALL at level 10 — they track you, fire shot-fans, and slam signs.
+- COIN CHAINS: grab falling coins for quick points and combo fuel.
+- TWO NEW POWER-UPS: Ghost (phase through danger) and Magnet (vacuum up loot).
+- NEW HAZARDS: signs now split in two, and later districts throw signs that home in on you.
+- DEEPER LOOK: 2.5D depth, parallax backdrops, and a combo heat-glow as your streak climbs.
+- Plus a district-clear bonus and richer end-of-run stats.
+
+Thanks for playing — chase that high score!
 ```
 
 ---
