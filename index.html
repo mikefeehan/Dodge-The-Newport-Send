@@ -145,6 +145,73 @@
              border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.08); color:#fff; font-weight:800; letter-spacing:3px; }
   .copy{ font-size:12px; opacity:.8; margin-top:8px; min-height:16px; }
   .rowbtns{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+
+  /* ============ Modernized start screen ============ */
+  /* let the live synthwave scene + bobbing Mike show through a frosted glass card */
+  #overlayIntro{ background:linear-gradient(180deg, rgba(6,6,26,.5), rgba(4,4,20,.74)); overflow:hidden; }
+  /* drifting neon aurora blobs behind the card */
+  #overlayIntro::before, #overlayIntro::after{
+    content:""; position:absolute; width:70vw; height:70vw; max-width:720px; max-height:720px;
+    border-radius:50%; filter:blur(80px); opacity:.55; pointer-events:none; z-index:0; mix-blend-mode:screen;
+  }
+  #overlayIntro::before{ left:-14vw; top:-16vh; background:radial-gradient(circle at 30% 30%, #ff3bff, transparent 62%);
+    animation:auroraA 15s ease-in-out infinite; }
+  #overlayIntro::after{ right:-16vw; bottom:-12vh; background:radial-gradient(circle at 60% 60%, #21f0ff, transparent 62%);
+    animation:auroraB 19s ease-in-out infinite; }
+  @keyframes auroraA{ 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(9vw,7vh) scale(1.2)} }
+  @keyframes auroraB{ 0%,100%{transform:translate(0,0) scale(1.12)} 50%{transform:translate(-8vw,-6vh) scale(1)} }
+  #overlayIntro .card{
+    position:relative; z-index:1;
+    background:linear-gradient(160deg, rgba(22,17,58,.62), rgba(10,10,38,.56));
+    border:1px solid rgba(255,255,255,.14);
+    -webkit-backdrop-filter:blur(18px) saturate(1.25); backdrop-filter:blur(18px) saturate(1.25);
+    box-shadow:0 24px 70px rgba(0,0,0,.55), 0 0 46px rgba(33,240,255,.14), inset 0 1px 0 rgba(255,255,255,.14);
+    animation:cardIn .7s cubic-bezier(.2,.8,.2,1) both;
+  }
+  @keyframes cardIn{ from{opacity:0; transform:translateY(26px) scale(.965)} to{opacity:1; transform:none} }
+  /* animated gradient sheen running around the card edge */
+  #overlayIntro .card::before{
+    content:""; position:absolute; inset:0; border-radius:inherit; padding:1.5px; pointer-events:none; z-index:2;
+    background:linear-gradient(120deg,#21f0ff,#ff3bff,#ffd166,#21f0ff); background-size:300% 300%;
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor; mask-composite:exclude; opacity:.6; animation:borderFlow 8s linear infinite;
+  }
+  @keyframes borderFlow{ to{background-position:300% 50%} }
+  /* animated gradient-shimmer hero title */
+  #overlayIntro .title{
+    background:linear-gradient(92deg,#fff,#21f0ff 26%,#ff8dff 52%,#ffd166 76%,#fff);
+    background-size:220% auto; -webkit-background-clip:text; background-clip:text;
+    color:transparent; -webkit-text-fill-color:transparent; text-shadow:none;
+    filter:drop-shadow(0 0 20px rgba(255,59,255,.5)) drop-shadow(0 0 44px rgba(33,240,255,.32));
+    animation:titleShimmer 6s linear infinite, titleFloat 4.5s ease-in-out infinite;
+  }
+  @keyframes titleShimmer{ to{background-position:220% center} }
+  @keyframes titleFloat{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+  #overlayIntro .title .sub{ -webkit-text-fill-color:var(--neon); color:var(--neon);
+    filter:drop-shadow(0 0 10px var(--neon)); animation:none; }
+  /* modern filled play buttons with lift + breathing glow */
+  #overlayIntro #btnPlayH, #overlayIntro #btnPlayV{
+    border:none; color:#04122a; font-size:16px; padding:15px 30px; filter:none;
+    transition:transform .16s ease, box-shadow .16s ease;
+  }
+  #overlayIntro #btnPlayH{ background:linear-gradient(135deg,#21f0ff,#9af0ff);
+    box-shadow:0 10px 26px rgba(33,240,255,.42), inset 0 1px 0 rgba(255,255,255,.6);
+    animation:breatheH 2.6s ease-in-out infinite; }
+  #overlayIntro #btnPlayV{ background:linear-gradient(135deg,#ff6bff,#ffb0ff);
+    box-shadow:0 10px 26px rgba(255,59,255,.42), inset 0 1px 0 rgba(255,255,255,.6);
+    animation:breatheV 2.6s ease-in-out infinite; }
+  #overlayIntro #btnPlayH:hover, #overlayIntro #btnPlayV:hover{ transform:translateY(-3px) scale(1.04); }
+  #overlayIntro #btnPlayH:active, #overlayIntro #btnPlayV:active{ transform:translateY(0) scale(.97); }
+  @keyframes breatheH{ 0%,100%{box-shadow:0 10px 26px rgba(33,240,255,.36), inset 0 1px 0 rgba(255,255,255,.6)}
+    50%{box-shadow:0 12px 40px rgba(33,240,255,.7), inset 0 1px 0 rgba(255,255,255,.6)} }
+  @keyframes breatheV{ 0%,100%{box-shadow:0 10px 26px rgba(255,59,255,.36), inset 0 1px 0 rgba(255,255,255,.6)}
+    50%{box-shadow:0 12px 40px rgba(255,59,255,.7), inset 0 1px 0 rgba(255,255,255,.6)} }
+  /* subtle glass tint on the control + legend chips so they read on the frosted card */
+  #overlayIntro .ctrl{ background:rgba(255,255,255,.05); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+  @media (prefers-reduced-motion: reduce){
+    #overlayIntro::before,#overlayIntro::after,#overlayIntro .card,#overlayIntro .card::before,
+    #overlayIntro .title,#overlayIntro #btnPlayH,#overlayIntro #btnPlayV{ animation:none !important; }
+  }
 </style>
 </head>
 <body>
@@ -208,7 +275,7 @@
         <button id="btnPlayH" class="btn pulse">▭&nbsp;Horizontal</button>
         <button id="btnPlayV" class="btn pulse">▯&nbsp;Vertical</button>
       </div>
-      <div class="copy">Tap one to start — music begins on tap.</div>
+      <div class="copy">Tap to begin — the music is already rolling.</div>
       <div class="copy" id="introStats" style="color:var(--gold); opacity:.9;"></div>
       <button id="btnGCIntro" class="btn alt sm gcbtn hidden">🏆 Game Center</button>
     </div>
@@ -441,7 +508,25 @@
       if(k<1) fadeId=requestAnimationFrame(step);
     })(t0);
   }
-  function playMusic(){ if(S.muted){ bgm.pause(); return; } try{ bgm.currentTime=0; bgm.volume=0; bgm.play().then(()=>fadeTo(0.7,900)).catch(()=>{}); }catch(e){} }
+  function playMusic(){
+    if(S.muted){ bgm.pause(); return; }
+    try{
+      if(bgm.paused){ bgm.currentTime=0; bgm.volume=0; }   // fresh start; if already playing, glide on without restarting
+      return bgm.play().then(()=>fadeTo(0.7,900)).catch(()=>{});
+    }catch(e){}
+  }
+  // Kick the soundtrack in on the very first user gesture (browsers block autoplay
+  // before any interaction), so music is already playing under the start screen —
+  // the tap that dismisses the splash counts, so it starts almost immediately.
+  let musicKicked=false;
+  function kickMusic(){
+    if(musicKicked || S.muted) return;
+    unlockAudio();
+    if(S.mode!=='intro' && S.mode!=='playing') return;
+    const p=playMusic();
+    if(p && p.then) p.then(()=>{ if(!bgm.paused) musicKicked=true; });
+  }
+  ['pointerdown','touchstart','keydown'].forEach(ev=>addEventListener(ev, kickMusic, {passive:true}));
   function stopMusic(){ fadeTo(0,450); setTimeout(()=>{ try{ bgm.pause(); }catch(e){} },470); }
   function applyMute(){
     el.btnMute.textContent = S.muted ? '🔇' : '🔊';
