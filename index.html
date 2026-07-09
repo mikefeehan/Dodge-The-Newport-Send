@@ -168,6 +168,7 @@
     <div class="col right">
       <div class="chip" id="hudScore">0</div>
       <div class="row">
+        <div class="chip" id="hudCoins" style="color:var(--gold); text-shadow:0 0 10px var(--gold);">💰 0</div>
         <div class="chip" id="hudBest">BEST 0</div>
         <button class="iconbtn" id="btnMute" title="Mute (M)">🔊</button>
         <button class="iconbtn" id="btnPause" title="Pause (P)">⏸</button>
@@ -182,8 +183,9 @@
   <div id="overlayIntro" class="overlay">
     <div class="card">
       <div class="title"><span class="sub">10-Level Neon Run</span>Dodge Mike's<br>Newport Send</div>
-      <p class="muted">Pilot Mike through 10 Newport districts. Dodge the falling bar signs, grab power-ups,
-        and skim past obstacles for <b>near-miss combos</b>. 3 lives per level. 30s a level. Score carries.</p>
+      <p class="muted">Pilot Mike through 10 Newport districts. Dodge the falling bar signs, snag <b>coin chains</b>,
+        grab power-ups, and skim past obstacles for <b>near-miss combos</b>. Survive the <b>bosses</b> at levels 5 &amp; 10.
+        3 lives per level. 30s a level. Score carries.</p>
       <div class="ctrls">
         <div class="ctrl"><b>DESKTOP</b>Arrows / WASD<br>or move the mouse</div>
         <div class="ctrl"><b>MOBILE</b>Drag anywhere<br>to steer Mike</div>
@@ -195,6 +197,10 @@
         <div><span class="k" style="color:#ffd166">VIP</span> clears the screen</div>
         <div><span class="k" style="color:#ff3bff">2×</span> double score</div>
         <div><span class="k" style="color:#ff4d6d">+1</span> extra life</div>
+        <div><span class="k" style="color:#b388ff">GHST</span> phase through signs</div>
+        <div><span class="k" style="color:#ff8a3d">MAG</span> pulls in loot</div>
+        <div><span class="k" style="color:#ffd166">💰</span> coin chains = points</div>
+        <div><span class="k" style="color:#ff8a3d">BOSS</span> lvl 5 &amp; 10 showdowns</div>
         <div><span class="k" style="color:#ffd166">★</span> combos = big points</div>
       </div>
       <div class="muted" style="margin:6px 0 0; font-weight:800; color:var(--neon); letter-spacing:1px;">CHOOSE HOW TO PLAY</div>
@@ -281,19 +287,25 @@
 
   // power-up types (weighted). instant ones fire immediately; timed ones set a countdown.
   const POWERUPS = [
-    { key:'slow',   label:'SLOW', color:'#7cfbff', dur:5, weight:22 },
-    { key:'shield', label:'SHLD', color:'#00ffaa', dur:8, weight:22 },
-    { key:'vip',    label:'VIP',  color:'#ffd166', dur:0, weight:14 },
-    { key:'dbl',    label:'2×',   color:'#ff3bff', dur:7, weight:18 },
+    { key:'slow',   label:'SLOW', color:'#7cfbff', dur:5, weight:19 },
+    { key:'shield', label:'SHLD', color:'#00ffaa', dur:8, weight:19 },
+    { key:'vip',    label:'VIP',  color:'#ffd166', dur:0, weight:12 },
+    { key:'dbl',    label:'2×',   color:'#ff3bff', dur:7, weight:15 },
     { key:'life',   label:'+1',   color:'#ff4d6d', dur:0, weight:7  },
+    { key:'ghost',  label:'GHST', color:'#b388ff', dur:5, weight:11 },
+    { key:'mag',    label:'MAG',  color:'#ff8a3d', dur:8, weight:12 },
   ];
   const PW_TOTW = POWERUPS.reduce((s,p)=>s+p.weight,0);
+
+  // boss encounters: these districts end with a boss for the final stretch of the timer
+  const BOSS_AT = { 5:{name:'THE BOUNCER', color:'#ff8a3d'}, 10:{name:'LAST CALL', color:'#ffd166'} };
+  const BOSS_WINDOW = 12;   // boss arrives when this many seconds remain on the level clock
 
   // ============================================================= DOM
   const $ = id => document.getElementById(id);
   const c = $('game'), ctx = c.getContext('2d');
   const el = {
-    level:$('hudLevel'), lives:$('hudLives'), score:$('hudScore'), best:$('hudBest'),
+    level:$('hudLevel'), lives:$('hudLives'), score:$('hudScore'), best:$('hudBest'), coins:$('hudCoins'),
     combo:$('combo'), pwBar:$('pwBar'), timefill:$('timefill'),
     oIntro:$('overlayIntro'), oPause:$('overlayPause'), oGO:$('overlayGameOver'),
     btnPlayH:$('btnPlayH'), btnPlayV:$('btnPlayV'), btnAgain:$('btnAgain'), btnShare:$('btnShare'), shareMsg:$('shareMsg'),
@@ -318,12 +330,14 @@
     level:1, time:LEVEL_TIME, score:0,
     best:Number(localStorage.getItem('dd_best')||0),
     lives:START_LIVES, combo:0, bestCombo:0,
-    obs:[], pickups:[], parts:[], texts:[],
+    obs:[], pickups:[], parts:[], texts:[], cash:[], shots:[],
     spawnT:0, spawnRate:0.95, speedMin:95, speedMax:150,
-    slow:0, shield:0, dbl:0, invuln:0,
+    slow:0, shield:0, dbl:0, invuln:0, ghost:0, mag:0,
     shake:0, levelsCleared:0, runTime:0, transition:0,
     muted: localStorage.getItem('dd_muted')==='1',
-    pickupT:0, countdown:0,
+    pickupT:0, countdown:0, cashT:2.5,
+    boss:null, bossSpawned:false, bossesSurvived:0,
+    coinsGot:0, nearMisses:0,
   };
 
   const player = { x:VW/2-36, y:VH-130, w:72, h:72, speed:540, vx:0, vy:0, trail:[] };
@@ -407,6 +421,9 @@
   }
   const SFX = {
     pickup(){ tone(620,0.12,'triangle',0.25,1240); tone(940,0.12,'sine',0.15,1500,0.04); },
+    coin(){ tone(988,0.07,'square',0.14,0,0); tone(1319,0.09,'square',0.12,0,0.06); },
+    boss(){ [110,110,92,74].forEach((f,i)=>tone(f,0.22,'sawtooth',0.22,55,i*0.16)); },
+    shot(){ tone(520,0.08,'square',0.10,180); },
     near(){ tone(300,0.09,'sawtooth',0.10,560); },
     hit(){ tone(180,0.32,'square',0.30,40); tone(90,0.4,'sawtooth',0.18,30); },
     life(){ tone(523,0.1,'sine',0.22,0,0); tone(784,0.12,'sine',0.22,0,0.1); tone(1046,0.16,'sine',0.22,0,0.22); },
@@ -476,18 +493,32 @@
     if(S.level>=6 && r<0.16) pattern='weaver';
     else if(S.level>=3 && r>=0.16 && r<0.44) pattern='drift';      // 28% at every level 3+
     else if(S.level>=5 && r>=0.44 && r<0.58) pattern='express';    // 14% at every level 5+
+    else if(S.level>=7 && r>=0.58 && r<0.68) pattern='seeker';     // 10% at every level 7+ (homes on you)
+    else if(S.level>=4 && r>=0.68 && r<0.80) pattern='splitter';   // 12% at every level 4+ (breaks in two)
     let vy=rand(S.speedMin,S.speedMax);
     if(pattern==='express'){ vy*=1.7; }
     const warn = pattern==='express' ? 0.6 : 0;   // express signs telegraph before dropping
     if(pattern==='drift'){ vx=rand(60,130)*(Math.random()<0.5?-1:1); }
-    const o={x,y:-h,w,h,vy,vx,label,pattern,warn,color:NEON[(Math.random()*NEON.length)|0],scored:false,fs};
+    const o={x,y:-h,w,h,vy,vx,label,pattern,warn,color:NEON[(Math.random()*NEON.length)|0],scored:false,fs,sc:0.6};
     if(pattern==='weaver'){                        // snakes side to side on the way down
       o.vy*=0.85;
       o.amp=rand(50,110); o.freq=rand(1.8,2.8); o.t=rand(0,6.2832);
       o.baseX=clamp(x, o.amp, Math.max(o.amp, VW-w-o.amp));
       o.x=clamp(o.baseX+Math.sin(o.t*o.freq)*o.amp, 0, VW-w);
     }
+    else if(pattern==='seeker'){ o.vy*=0.9; o.steer=110+S.level*6; }   // drifts toward the player's column
+    else if(pattern==='splitter'){ o.splitAt=rand(VH*0.32,VH*0.52); }  // cracks apart partway down
     S.obs.push(o);
+  }
+  // splitter children: two half-signs that peel away left and right
+  function splitObstacle(o){
+    burst(o.x+o.w/2,o.y+o.h/2,o.color,16,220); SFX.near();
+    const cw=Math.max(52,o.w/2-6), mid=Math.ceil(o.label.length/2);
+    for(const dir of [-1,1]){
+      S.obs.push({x:clamp(o.x+(dir<0?0:o.w-cw),0,VW-cw), y:o.y, w:cw, h:o.h, vy:o.vy*1.12,
+        vx:dir*rand(70,120), label:(dir<0?o.label.slice(0,mid):o.label.slice(mid)).trim()||'!',
+        pattern:'drift', warn:0, color:o.color, scored:o.scored, fs:Math.min(o.fs||20,15), sc:1});
+    }
   }
   function pickPowerup(){
     let r=Math.random()*PW_TOTW;
@@ -497,6 +528,15 @@
   function spawnPickup(){
     const def=pickPowerup();
     S.pickups.push({x:rand(28,VW-28),y:-30,r:18,vy:rand(85,120),def,spin:rand(0,6.28)});
+  }
+  // coin chains: 3-6 coins falling in a line or a gentle sine snake
+  function spawnCash(){
+    const n=3+((Math.random()*4)|0), vy=rand(95,135);
+    const x0=rand(40,VW-40), wave=Math.random()<0.5, amp=rand(30,70), dx=rand(-26,26);
+    for(let i=0;i<n;i++){
+      S.cash.push({x:clamp(wave?x0:x0+dx*i,18,VW-18), y:-24-i*46, r:11, vy,
+        wave, amp, ph:i*0.9, spin:rand(0,6.28)});
+    }
   }
 
   // ============================================================= EFFECTS
@@ -511,8 +551,9 @@
   // ============================================================= GAME FLOW
   function resetRun(){
     Object.assign(S,{level:1,time:LEVEL_TIME,score:0,lives:START_LIVES,combo:0,bestCombo:0,
-      obs:[],pickups:[],parts:[],texts:[],spawnT:0,spawnRate:0.95,speedMin:95,speedMax:150,
-      slow:0,shield:0,dbl:0,invuln:1.2,shake:0,levelsCleared:0,runTime:0,transition:1.4,pickupT:0,countdown:0});
+      obs:[],pickups:[],parts:[],texts:[],cash:[],shots:[],spawnT:0,spawnRate:0.95,speedMin:95,speedMax:150,
+      slow:0,shield:0,dbl:0,invuln:1.2,ghost:0,mag:0,shake:0,levelsCleared:0,runTime:0,transition:1.4,pickupT:0,countdown:0,
+      cashT:2.5,boss:null,bossSpawned:false,bossesSurvived:0,coinsGot:0,nearMisses:0});
     player.x=VW/2-player.w/2; player.y=VH-130; player.vx=0; player.vy=0; player.trail.length=0;
   }
   function startGame(o){
@@ -526,7 +567,11 @@
     checkRotate();
   }
   function nextLevel(){
+    clearBoss(true);
     if(S.level>=10){ S.levelsCleared=10; endGame(true); return; }
+    const bonus=Math.round(60*S.level*(S.dbl>0?2:1));
+    S.score+=bonus;
+    floatText(VW/2,VH/2+6,'DISTRICT CLEARED +'+bonus,'#ffd166',20);
     S.level++; S.levelsCleared++; S.time=LEVEL_TIME; S.lives=START_LIVES; S.invuln=1.2; S.transition=1.4;
     S.spawnRate=Math.max(0.4,0.95-(S.level-1)*0.06);
     S.speedMin=95+(S.level-1)*12; S.speedMax=150+(S.level-1)*16;
@@ -535,6 +580,7 @@
     SFX.level(); haptic('success');
   }
   function endGame(victory){
+    clearBoss(!!victory);
     S.mode='over';
     const newBest = Math.floor(S.score)>S.best && S.best>0;
     if(Math.floor(S.score)>S.best){ S.best=Math.floor(S.score); localStorage.setItem('dd_best',S.best); }
@@ -551,6 +597,9 @@
       `<div><span>Best</span><b>${S.best}</b></div>`+
       `<div><span>Levels cleared</span><b>${S.levelsCleared}/10</b></div>`+
       `<div><span>Best combo</span><b>×${S.bestCombo}</b></div>`+
+      `<div><span>Coins grabbed</span><b>💰 ${S.coinsGot}</b></div>`+
+      `<div><span>Near misses</span><b>${S.nearMisses}</b></div>`+
+      `<div><span>Bosses beaten</span><b>${S.bossesSurvived}</b></div>`+
       `<div><span>Time survived</span><b>${S.runTime.toFixed(1)}s</b></div>`+
       `<div><span>Reached</span><b>${LEVELS[S.level-1].name}</b></div>`;
     renderBoard(); el.initials.value=''; el.initialsWrap.classList.remove('hidden');
@@ -654,7 +703,7 @@
 
   // ============================================================= UPDATE
   function hit(){
-    if(S.mode!=='playing' || S.invuln>0) return;
+    if(S.mode!=='playing' || S.invuln>0 || S.ghost>0) return;
     if(S.shield>0){ S.shield=0; S.invuln=0.6; burst(player.x+player.w/2,player.y+player.h/2,'#00ffaa',24,260); SFX.pickup(); S.shake=8; haptic('medium'); return; }
     S.lives--; S.combo=0; S.invuln=1.5; S.shake=18;
     burst(player.x+player.w/2,player.y+player.h/2,'#ff4d6d',40,360); SFX.hit(); haptic('heavy');
@@ -667,11 +716,58 @@
     if(k==='slow') S.slow=p.def.dur;
     else if(k==='shield') S.shield=p.def.dur;
     else if(k==='dbl') S.dbl=p.def.dur;
+    else if(k==='ghost') S.ghost=p.def.dur;
+    else if(k==='mag') S.mag=p.def.dur;
     else if(k==='vip'){ S.obs.forEach(o=>burst(o.x+o.w/2,o.y+o.h/2,o.color,10,180)); S.obs=[]; S.shake=10; }
     else if(k==='life'){ if(S.lives<MAX_LIVES)S.lives++; SFX.life(); floatText(p.x,p.y,'+1 LIFE','#ff4d6d',22); return; }
     floatText(p.x,p.y,p.def.label,p.def.color,22);
   }
   function comboMult(){ return clamp(1+S.combo*0.05,1,5); }
+
+  // ============================================================= BOSS
+  // Boss districts end with a showdown: the boss sign hovers up top, tracks the
+  // player's column, fires aimed shot-fans and slams down telegraphed express
+  // signs. Survive until the level clock runs out to clear it.
+  function startBoss(){
+    const def=BOSS_AT[S.level];
+    const w=Math.min(300,VW*0.5);
+    S.boss={x:VW/2-w/2, y:60, w, h:54, name:def.name, color:def.color, fireT:1.4, slamT:2.8, bob:0, flash:0.9};
+    S.bossSpawned=true; S.shake=Math.max(S.shake,10);
+    floatText(VW/2,VH*0.35,'⚠ '+def.name+' ⚠',def.color,32);
+    SFX.boss(); haptic('heavy');
+  }
+  function stepBoss(dt){
+    const B=S.boss; if(!B) return;
+    B.bob+=dt; if(B.flash>0)B.flash-=dt;
+    // ease toward the player's column
+    const target=clamp(player.x+player.w/2-B.w/2, 8, VW-B.w-8);
+    B.x+=(target-B.x)*Math.min(1,dt*1.6);
+    B.y=60+Math.sin(B.bob*2.2)*8;
+    // aimed shot fan
+    B.fireT-=dt;
+    if(B.fireT<=0){
+      B.fireT=rand(1.25,1.9)-Math.min(0.4,S.level*0.03);
+      const bx=B.x+B.w/2, by=B.y+B.h, px=player.x+player.w/2, py=player.y+player.h/2;
+      const base=Math.atan2(py-by,px-bx), spd=225+S.level*7;
+      for(const off of [-0.32,0,0.32]){
+        S.shots.push({x:bx,y:by,vx:Math.cos(base+off)*spd,vy:Math.sin(base+off)*spd,r:6,c:B.color});
+      }
+      burst(bx,by,B.color,10,160); SFX.shot();
+    }
+    // telegraphed slam: a fast express sign drops on the player's column
+    B.slamT-=dt;
+    if(B.slamT<=0){
+      B.slamT=rand(2.5,3.5);
+      const w=Math.min(170,VW*0.32), h=38;
+      S.obs.push({x:clamp(player.x+player.w/2-w/2,0,VW-w), y:-h, w, h,
+        vy:rand(S.speedMax,S.speedMax*1.3)*1.7, vx:0, label:B.name, pattern:'express',
+        warn:0.6, color:B.color, scored:false, fs:16, sc:1});
+    }
+  }
+  function clearBoss(survived){
+    if(S.boss && survived) S.bossesSurvived++;
+    S.boss=null; S.bossSpawned=false; S.shots.length=0;
+  }
 
   function step(dt){
     S.runTime+=dt;
@@ -702,15 +798,21 @@
     // trail
     player.trail.push({x:player.x,y:player.y}); if(player.trail.length>9)player.trail.shift();
 
-    // ---- spawns ----
+    // ---- boss ----
+    if(BOSS_AT[S.level] && !S.bossSpawned && S.time<=BOSS_WINDOW && S.transition<=0) startBoss();
+    if(S.boss) stepBoss(dt*sm);
+
+    // ---- spawns (regular signs thin out while a boss is on screen) ----
     S.spawnT-=dt;
     if(S.spawnT<=0 && S.transition<=0){
       spawnObstacle();
-      if(S.level>=4 && Math.random()<0.30) spawnObstacle(); // double spawn at higher levels
-      S.spawnT=S.spawnRate;
+      if(!S.boss && S.level>=4 && Math.random()<0.30) spawnObstacle(); // double spawn at higher levels
+      S.spawnT=S.spawnRate*(S.boss?1.7:1);
     }
     S.pickupT-=dt;
     if(S.pickupT<=0){ if(Math.random()<0.55) spawnPickup(); S.pickupT=rand(2.2,4.2); }
+    S.cashT-=dt;
+    if(S.cashT<=0 && S.transition<=0){ spawnCash(); S.cashT=rand(3.5,6.5); }
 
     // ---- obstacles ----
     const phx=player.x+10, phy=player.y+10, phw=player.w-20, phh=player.h-20; // forgiving hitbox
@@ -719,16 +821,25 @@
       const o=S.obs[i];
       if(o.warn>0){ o.warn-=dt*sm; continue; }   // still telegraphing — parked above the screen
       o.y+=o.vy*dt*sm;
+      // depth entry: signs scale up from 60% as they drop out of the horizon
+      o.sc=clamp(0.6+0.4*((o.y+o.h)/110),0.6,1);
       if(o.pattern==='drift'){ o.x+=o.vx*dt*sm; if(o.x<0){o.x=0;o.vx*=-1;} if(o.x>VW-o.w){o.x=VW-o.w;o.vx*=-1;} }
       else if(o.pattern==='weaver'){ o.t+=dt*sm; o.x=clamp(o.baseX+Math.sin(o.t*o.freq)*o.amp, 0, VW-o.w); }
-      // collision (remove the offending sign so it can't re-trigger next frame)
-      if(phx<o.x+o.w && phx+phw>o.x && phy<o.y+o.h && phy+phh>o.y){ hit(); S.obs.splice(i,1); continue; }
+      else if(o.pattern==='seeker'){                          // homes on the player's column
+        const dx=(player.x+player.w/2)-(o.x+o.w/2);
+        o.x=clamp(o.x+clamp(dx,-o.steer,o.steer)*dt*sm, 0, VW-o.w);
+      }
+      else if(o.pattern==='splitter' && o.y>=o.splitAt){ splitObstacle(o); S.obs.splice(i,1); continue; }
+      // collision on the depth-scaled rect (ghost mode phases straight through)
+      const ew=o.w*o.sc, eh=o.h*o.sc, ex=o.x+(o.w-ew)/2, ey=o.y+(o.h-eh)/2;
+      if(S.ghost<=0 && phx<ex+ew && phx+phw>ex && phy<ey+eh && phy+phh>ey){ hit(); S.obs.splice(i,1); continue; }
       // near-miss (passed below player without colliding)
       else if(!o.scored && o.y>pcy){
         o.scored=true;
         const gap=Math.max(o.x-(player.x+player.w), player.x-(o.x+o.w));
         if(gap>=0 && gap<46){
           S.combo++; if(S.combo>S.bestCombo)S.bestCombo=S.combo;
+          S.nearMisses++;
           const pts=Math.round(12*comboMult()*(S.dbl>0?2:1));
           S.score+=pts; SFX.near(); haptic('light');
           floatText(player.x+player.w/2,player.y-6,'NEAR MISS +'+pts,'#ffd166',16);
@@ -737,16 +848,47 @@
       if(o.y>VH+60) S.obs.splice(i,1);
     }
 
+    // ---- boss shots ----
+    for(let i=S.shots.length-1;i>=0;i--){
+      const q=S.shots[i]; q.x+=q.vx*dt*sm; q.y+=q.vy*dt*sm;
+      const nx=clamp(q.x,phx,phx+phw), ny=clamp(q.y,phy,phy+phh);   // nearest point on player hitbox
+      if(S.ghost<=0 && (q.x-nx)*(q.x-nx)+(q.y-ny)*(q.y-ny) < q.r*q.r){ hit(); S.shots.splice(i,1); continue; }
+      if(q.x<-20||q.x>VW+20||q.y<-20||q.y>VH+20) S.shots.splice(i,1);
+    }
+
     // ---- pickups ----
+    const pcx=player.x+player.w/2;
+    const magnet=(p,pull)=>{           // MAG drags loot toward Mike
+      if(S.mag<=0) return;
+      const dx=pcx-p.x, dy=pcy-p.y, d=Math.hypot(dx,dy);
+      if(d>1 && d<300){ const k=pull*(1-d/300); p.x+=dx/d*k*dt; p.y+=dy/d*k*dt; }
+    };
     for(let i=S.pickups.length-1;i>=0;i--){
-      const p=S.pickups[i]; p.y+=p.vy*dt; p.spin+=dt*3;
+      const p=S.pickups[i]; p.y+=p.vy*dt; p.spin+=dt*3; magnet(p,420);
       const box={x:p.x-p.r,y:p.y-p.r,w:p.r*2,h:p.r*2};
       if(phx<box.x+box.w && phx+phw>box.x && phy<box.y+box.h && phy+phh>box.y){ collectPickup(p); S.pickups.splice(i,1); continue; }
       if(p.y>VH+40) S.pickups.splice(i,1);
     }
 
+    // ---- coins ----
+    for(let i=S.cash.length-1;i>=0;i--){
+      const p=S.cash[i]; p.y+=p.vy*dt*sm; p.spin+=dt*5;
+      if(p.wave) p.x=clamp(p.x+Math.cos(p.y/55+p.ph)*70*dt,14,VW-14);
+      magnet(p,520);
+      const box={x:p.x-p.r,y:p.y-p.r,w:p.r*2,h:p.r*2};
+      if(phx<box.x+box.w && phx+phw>box.x && phy<box.y+box.h && phy+phh>box.y){
+        S.coinsGot++; S.combo++; if(S.combo>S.bestCombo)S.bestCombo=S.combo;
+        const pts=Math.round(5*comboMult()*(S.dbl>0?2:1));
+        S.score+=pts; burst(p.x,p.y,'#ffd166',8,150); SFX.coin(); haptic('light');
+        floatText(p.x,p.y-4,'+'+pts,'#ffd166',14);
+        S.cash.splice(i,1); continue;
+      }
+      if(p.y>VH+30) S.cash.splice(i,1);
+    }
+
     // ---- timers ----
     if(S.slow>0)S.slow-=dt; if(S.shield>0)S.shield-=dt; if(S.dbl>0)S.dbl-=dt;
+    if(S.ghost>0)S.ghost-=dt; if(S.mag>0)S.mag-=dt;
 
     // ---- score ----
     S.score += dt*6*(1+(S.level-1)*0.12)*comboMult()*(S.slow>0?0.6:1)*(S.dbl>0?2:1);
@@ -767,7 +909,21 @@
   function drawCover(img){
     const ir=img.naturalWidth/img.naturalHeight, cr=VW/VH;
     let dw,dh; if(ir>cr){ dh=VH; dw=VH*ir; } else { dw=VW; dh=VW/ir; }
-    ctx.drawImage(img,(VW-dw)/2,(VH-dh)/2,dw,dh);
+    // slight zoom + camera sway opposite the player's movement gives the photo depth
+    dw*=1.05; dh*=1.05;
+    const sx=(0.5-(player.x+player.w/2)/VW)*16, sy=(0.5-(player.y+player.h/2)/VH)*8;
+    ctx.drawImage(img,(VW-dw)/2+sx,(VH-dh)/2+sy,dw,dh);
+  }
+  // parallax skyline silhouettes for the procedural backdrop (fractions of the field,
+  // so they survive orientation changes). Two layers: far + near.
+  const SKYL=[[],[]];
+  for(let li=0;li<2;li++){
+    let x=-0.06;
+    while(x<1.06){
+      const w=rand(0.03,0.09), h=li?rand(0.12,0.32):rand(0.05,0.16);
+      SKYL[li].push({x,w,h,win:Array.from({length:2+((Math.random()*5)|0)},()=>({wx:Math.random(),wy:Math.random()}))});
+      x+=w+rand(0.006,0.022);
+    }
   }
   function drawBackground(dt){
     bgT+=dt;
@@ -779,15 +935,45 @@
     } else {
       const g=ctx.createLinearGradient(0,0,0,VH); g.addColorStop(0,L.c1); g.addColorStop(1,L.c2);
       ctx.fillStyle=g; ctx.fillRect(0,0,VW,VH);
-      const hy=VH*0.46;
-      ctx.save();
-      const sg=ctx.createRadialGradient(VW/2,hy,8,VW/2,hy,150);
-      sg.addColorStop(0,L.sun); sg.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.globalAlpha=0.55; ctx.fillStyle=sg; ctx.beginPath(); ctx.arc(VW/2,hy,150,0,6.2832); ctx.fill();
+      const hy=VH*0.46, sway=(0.5-(player.x+player.w/2)/VW);   // camera drifts opposite Mike for depth
+      // ---- banded synthwave sun (classic horizontal cuts across the lower half) ----
+      const sr=Math.min(150,VW*0.16), scx=VW/2+sway*40;
+      ctx.save(); ctx.beginPath(); ctx.arc(scx,hy,sr,0,6.2832); ctx.clip();
+      const sg=ctx.createLinearGradient(0,hy-sr,0,hy+sr);
+      sg.addColorStop(0,L.sun); sg.addColorStop(0.55,L.sun); sg.addColorStop(1,'#ff3bff');
+      ctx.globalAlpha=0.8; ctx.fillStyle=sg; ctx.fillRect(scx-sr,hy-sr,sr*2,sr*2);
+      ctx.globalCompositeOperation='destination-out'; ctx.fillStyle='#000';
+      for(let i=0;i<6;i++){ const by=hy+sr*0.12+i*(sr*0.16); ctx.fillRect(scx-sr,by,sr*2,Math.max(2,sr*0.05-i*0.4)); }
       ctx.restore();
+      // soft halo around the sun
+      ctx.save();
+      const hg=ctx.createRadialGradient(scx,hy,8,scx,hy,sr*1.5);
+      hg.addColorStop(0,'rgba(255,255,255,0)'); hg.addColorStop(0.7,L.sun); hg.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.globalAlpha=0.25; ctx.fillStyle=hg; ctx.beginPath(); ctx.arc(scx,hy,sr*1.5,0,6.2832); ctx.fill();
+      ctx.restore();
+      // ---- parallax skyline (far layer washed out, near layer darker) ----
+      for(let li=0;li<2;li++){
+        const px=sway*(li?26:12), base=hy+(li?VH*0.02:-VH*0.01);
+        ctx.save(); ctx.globalAlpha=li?0.5:0.32; ctx.fillStyle=li?'#05040f':L.c1;
+        for(const b of SKYL[li]){
+          const bx=b.x*VW+px, bw=b.w*VW, bh=b.h*VH;
+          ctx.fillRect(bx,base-bh,bw,bh);
+        }
+        ctx.restore();
+        if(li){ // lit windows on the near skyline
+          ctx.save(); ctx.fillStyle=L.grid; ctx.globalAlpha=0.5;
+          for(const b of SKYL[li]){
+            const bx=b.x*VW+px, bw=b.w*VW, bh=b.h*VH;
+            for(const w of b.win){ if((Math.sin(bgT*1.3+w.wx*90+w.wy*30)+1)>1.1)
+              ctx.fillRect(bx+w.wx*bw*0.8+bw*0.1, base-bh+w.wy*bh*0.85+2, 2.5, 2.5); }
+          }
+          ctx.restore();
+        }
+      }
+      // ---- perspective grid floor ----
       ctx.save(); ctx.strokeStyle=L.grid; ctx.globalAlpha=0.18; ctx.lineWidth=1.5;
-      const vp=VW/2;
-      for(let i=-10;i<=10;i++){ ctx.beginPath(); ctx.moveTo(vp,hy); ctx.lineTo(vp+i*120,VH); ctx.stroke(); }
+      const vp=VW/2+sway*80;
+      for(let i=-10;i<=10;i++){ ctx.beginPath(); ctx.moveTo(vp,hy); ctx.lineTo(VW/2+i*120,VH); ctx.stroke(); }
       const scroll=(bgT*0.35)%1;
       for(let i=0;i<14;i++){ const t=(i+scroll)/14; const y=hy+ (VH-hy)*t*t; ctx.globalAlpha=0.05+0.16*t;
         ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(VW,y); ctx.stroke(); }
@@ -798,6 +984,29 @@
     for(const a of ambient){ a.y-=a.sp*dt; if(a.y<-4){a.y=VH+4;a.x=Math.random()*VW;} ctx.globalAlpha=0.18+0.3*(a.s/2.2);
       ctx.beginPath(); ctx.arc(a.x,a.y,a.s,0,6.2832); ctx.fill(); }
     ctx.restore();
+    // cinematic vignette (cached to an offscreen canvas; rebuilt only on resize)
+    if(vig) ctx.drawImage(vig,0,0,VW,VH);
+    // combo heat: the screen edges glow hotter as your combo climbs
+    if(S.combo>=5 && S.mode==='playing'){
+      const heat=clamp((S.combo-4)/26,0,0.5);
+      ctx.save(); ctx.globalAlpha=heat*(0.7+0.3*Math.sin(bgT*6));
+      const cg=ctx.createRadialGradient(VW/2,VH/2,Math.min(VW,VH)*0.3,VW/2,VH/2,Math.max(VW,VH)*0.62);
+      cg.addColorStop(0,'rgba(0,0,0,0)'); cg.addColorStop(1, S.combo>=20?'#ff3bff':'#ffd166');
+      ctx.fillStyle=cg; ctx.fillRect(0,0,VW,VH); ctx.restore();
+    }
+  }
+  // Vignette is expensive to build per-frame, so bake it once into an offscreen
+  // canvas at the current field size and just blit it each frame.
+  let vig=null;
+  function buildVignette(){
+    try{
+      const cv=document.createElement('canvas'); cv.width=VW; cv.height=VH;
+      const vx=cv.getContext('2d');
+      const g=vx.createRadialGradient(VW/2,VH*0.5,Math.min(VW,VH)*0.35,VW/2,VH*0.5,Math.max(VW,VH)*0.72);
+      g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(2,2,12,0.55)');
+      vx.fillStyle=g; vx.fillRect(0,0,VW,VH);
+      vig=cv;
+    }catch(e){ vig=null; }
   }
 
   function drawPlayer(){
@@ -819,13 +1028,16 @@
     // invuln blink
     if(!(S.invuln>0 && Math.floor(S.invuln*12)%2===0)){
       ctx.save();
-      // neon glow behind him
+      const ghost=S.ghost>0;
+      // neon glow behind him (purple + translucent while phased)
+      const gc = ghost ? '179,136,255' : '33,240,255';
       const grd=ctx.createRadialGradient(cx,cy,8,cx,cy,ph*0.58);
-      grd.addColorStop(0,'rgba(33,240,255,.32)'); grd.addColorStop(1,'rgba(33,240,255,0)');
+      grd.addColorStop(0,'rgba('+gc+',.32)'); grd.addColorStop(1,'rgba('+gc+',0)');
       ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(cx,cy,ph*0.58,0,6.2832); ctx.fill();
+      if(ghost) ctx.globalAlpha=0.55+0.15*Math.sin(bgT*9);
       // lean into the direction of movement
       ctx.translate(cx,cy); ctx.rotate(clamp(player.vx*0.00045,-0.22,0.22)); ctx.translate(-cx,-cy);
-      if(loaded){ ctx.shadowColor='rgba(33,240,255,.55)'; ctx.shadowBlur=12; ctx.drawImage(fr, cx-pw/2, cy-ph/2, pw, ph); }
+      if(loaded){ ctx.shadowColor='rgba('+gc+',.55)'; ctx.shadowBlur=12; ctx.drawImage(fr, cx-pw/2, cy-ph/2, pw, ph); }
       else { ctx.fillStyle='#fff'; ctx.beginPath(); rr(player.x,player.y,player.w,player.h,12); ctx.fill(); }
       ctx.restore();
     }
@@ -853,12 +1065,20 @@
         }
         continue;
       }
-      ctx.save(); ctx.shadowColor=o.color; ctx.shadowBlur=14;
+      // depth-scaled sign: drawn around its center so it grows out of the horizon
+      const sc=o.sc==null?1:o.sc, ocx=o.x+o.w/2, ocy=o.y+o.h/2;
+      ctx.save(); ctx.translate(ocx,ocy); ctx.scale(sc,sc); ctx.globalAlpha=0.55+0.45*((sc-0.6)/0.4);
+      ctx.shadowColor=o.color;
+      ctx.shadowBlur = o.pattern==='seeker' ? 16+8*Math.sin(bgT*10) : 14;   // seekers pulse angrily
       ctx.strokeStyle=o.color; ctx.fillStyle='rgba(0,0,0,.30)'; ctx.lineWidth=2;
-      rr(o.x,o.y,o.w,o.h,16); ctx.fill(); ctx.stroke();
+      rr(-o.w/2,-o.h/2,o.w,o.h,16); ctx.fill(); ctx.stroke();
+      if(o.pattern==='splitter'){                                            // hairline crack down the middle
+        ctx.beginPath(); ctx.moveTo(0,-o.h/2+4); ctx.lineTo(-4,0); ctx.lineTo(0,o.h/2-4);
+        ctx.lineWidth=1.2; ctx.globalAlpha*=0.8; ctx.stroke(); ctx.globalAlpha/=0.8;
+      }
       ctx.shadowBlur=0; ctx.font='bold '+(o.fs||20)+'px Inter, system-ui, sans-serif'; ctx.fillStyle=o.color;
       ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.save(); ctx.beginPath(); ctx.rect(o.x+3,o.y,o.w-6,o.h); ctx.clip(); ctx.fillText(o.label,o.x+o.w/2,o.y+o.h/2+1); ctx.restore();
+      ctx.save(); ctx.beginPath(); ctx.rect(-o.w/2+3,-o.h/2,o.w-6,o.h); ctx.clip(); ctx.fillText(o.label,0,1); ctx.restore();
       ctx.restore();
     }
     // pickups
@@ -869,6 +1089,37 @@
       ctx.beginPath(); ctx.arc(0,0,p.r,0,6.2832); ctx.fill(); ctx.stroke();
       ctx.shadowBlur=0; ctx.fillStyle=p.def.color; ctx.font='bold 12px Inter, sans-serif';
       ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(p.def.label,0,1);
+      ctx.restore();
+    }
+    // coins (squash horizontally as they spin, like a flipping coin)
+    for(const p of S.cash){
+      const sq=Math.abs(Math.cos(p.spin))*0.75+0.25;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.scale(sq,1);
+      ctx.shadowColor='#ffd166'; ctx.shadowBlur=12;
+      ctx.fillStyle='rgba(60,40,0,.55)'; ctx.strokeStyle='#ffd166'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(0,0,p.r,0,6.2832); ctx.fill(); ctx.stroke();
+      ctx.shadowBlur=0; ctx.fillStyle='#ffd166'; ctx.font='bold 13px Inter, sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('$',0,1);
+      ctx.restore();
+    }
+    // boss sign
+    if(S.boss){
+      const B=S.boss, pulse=14+7*Math.sin(bgT*7);
+      ctx.save();
+      if(B.flash>0 && Math.floor(B.flash*12)%2===0) ctx.globalAlpha=0.35;   // arrival flicker
+      ctx.shadowColor=B.color; ctx.shadowBlur=pulse+8;
+      ctx.strokeStyle=B.color; ctx.fillStyle='rgba(0,0,0,.45)'; ctx.lineWidth=3.5;
+      rr(B.x,B.y,B.w,B.h,14); ctx.fill(); ctx.stroke();
+      ctx.lineWidth=1.5; ctx.globalAlpha*=0.6; rr(B.x-6,B.y-6,B.w+12,B.h+12,18); ctx.stroke(); ctx.globalAlpha/=0.6;
+      ctx.shadowBlur=0; ctx.fillStyle=B.color; ctx.font='900 24px Inter, system-ui, sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(B.name,B.x+B.w/2,B.y+B.h/2+1);
+      ctx.restore();
+    }
+    // boss shots
+    for(const q of S.shots){
+      ctx.save(); ctx.shadowColor=q.c; ctx.shadowBlur=12; ctx.fillStyle=q.c;
+      ctx.beginPath(); ctx.arc(q.x,q.y,q.r,0,6.2832); ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,.85)'; ctx.beginPath(); ctx.arc(q.x,q.y,q.r*0.45,0,6.2832); ctx.fill();
       ctx.restore();
     }
     // particles
@@ -901,6 +1152,7 @@
     el.level.innerHTML='LVL '+S.level+' · '+L.name;
     el.score.textContent=Math.floor(S.score).toLocaleString();
     el.best.textContent='BEST '+Math.max(S.best,Math.floor(S.score)).toLocaleString();
+    if(el.coins) el.coins.textContent='💰 '+S.coinsGot;
     // show at least START_LIVES heart slots, plus any extra lives earned
     let shown=Math.max(START_LIVES,S.lives), hs='';
     for(let i=0;i<shown;i++) hs+= i<S.lives ? '♥ ' : '<span class="dead">♥</span> ';
@@ -913,6 +1165,8 @@
     if(S.shield>0) pw+=chip('SHLD','#00ffaa',S.shield);
     if(S.slow>0) pw+=chip('SLOW','#7cfbff',S.slow);
     if(S.dbl>0) pw+=chip('2×','#ff3bff',S.dbl);
+    if(S.ghost>0) pw+=chip('GHST','#b388ff',S.ghost);
+    if(S.mag>0) pw+=chip('MAG','#ff8a3d',S.mag);
     el.pwBar.innerHTML=pw;
   }
   function chip(label,color,t){ return '<div class="pw" style="color:'+color+'">'+label+' '+Math.ceil(t)+'s</div>'; }
@@ -1005,6 +1259,7 @@
     if(c.width!==bw||c.height!==bh){ c.width=bw; c.height=bh; }
     if(player){ player.x=clamp(player.x,0,VW-player.w); player.y=clamp(player.y,0,VH-player.h); }
     ambient.forEach(a=>{ if(a.x>VW)a.x=Math.random()*VW; if(a.y>VH)a.y=Math.random()*VH; });
+    buildVignette();
     checkRotate(w,h);
   }
   function checkRotate(w,h){
@@ -1035,7 +1290,7 @@
   rafId=requestAnimationFrame(loop);
 
   // tiny debug handle (harmless): lets the game be driven/inspected headlessly
-  window.__DODGE__={ S, player, V, start:startGame, step:dt=>{ if(S.mode==='playing')step(dt); }, draw:()=>render(false,0.016), attract:()=>renderAttract(0.016), hit, key:k=>keys.add(k), unkey:k=>keys.delete(k) };
+  window.__DODGE__={ S, player, V, start:startGame, step:dt=>{ if(S.mode==='playing')step(dt); }, draw:()=>render(false,0.016), attract:()=>renderAttract(0.016), hit, key:k=>keys.add(k), unkey:k=>keys.delete(k), spawnCash, startBoss };
 })();
 </script>
 </body>

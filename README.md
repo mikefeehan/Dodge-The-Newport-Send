@@ -19,10 +19,13 @@ bar signs, grab power-ups, and skim past danger for **near-miss combos**. The wh
 - **Survive 10 levels**, 30 seconds each. Score **carries** across levels.
 - Each level starts with **3 lives**. A hit costs a life and gives you a moment of invulnerability.
 - The rare **+1 life** power-up can boost you up to **5 lives** during that level.
-- Clear the timer to advance to the next district and reset back to **3 lives**.
-- **Skim past signs** without touching them to rack up a **combo multiplier**.
-- From level 5, **express signs** drop fast — watch for the flashing ⚡ warning.
-  From level 6, **weaver signs** snake side-to-side on the way down.
+- Clear the timer to advance to the next district and reset back to **3 lives** (plus a **district-clear bonus**).
+- **Skim past signs** without touching them to rack up a **combo multiplier**. Grab **coin chains** for quick points.
+- From level 3, signs **drift**; level 4, some **split in two** as they fall; level 5, **express signs**
+  drop fast (flashing ⚡ warning); level 6, **weaver signs** snake side-to-side; level 7, **seeker signs**
+  home in on your column.
+- **Boss showdowns** close out levels **5** (THE BOUNCER) and **10** (LAST CALL): they track you, fire
+  aimed shot-fans, and slam express signs. Survive the level clock to clear them.
 - Beat all 10 districts for the full **victory celebration**. 🎆
 
 ### Controls
@@ -42,6 +45,8 @@ bar signs, grab power-ups, and skim past danger for **near-miss combos**. The wh
 | 💛 | **VIP** | Instantly clears every sign on screen |
 | 💜 | **2×** | Doubles your score (~7s) |
 | ❤️ | **+1** | Extra life for the current level (rare) |
+| 💟 | **GHOST** | Phase straight through signs & boss shots (~5s) |
+| 🧲 | **MAGNET** | Pulls in nearby coins and power-ups (~8s) |
 
 ## Scoring & leaderboards
 - Score builds continuously, scaled by your **level** and **combo multiplier**.
