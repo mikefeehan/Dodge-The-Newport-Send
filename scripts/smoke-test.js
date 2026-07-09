@@ -72,6 +72,48 @@ function check(name, ok, detail) {
     check('weaver pattern spawns at level 6', late.weaver);
     check('express telegraph appears', late.telegraph);
 
+    // coin chains spawn and are collectable
+    const coins = await page.evaluate(() => {
+      const D = window.__DODGE__;
+      D.S.cash = []; D.spawnCash();
+      const spawned = D.S.cash.length;
+      // teleport Mike onto the first coin and step until it's grabbed
+      const before = D.S.coinsGot;
+      for (let i = 0; i < 120 && D.S.cash.length; i++) {
+        const c0 = D.S.cash[0];
+        D.player.x = c0.x - D.player.w / 2; D.player.y = c0.y - D.player.h / 2;
+        D.S.invuln = 5; D.step(1 / 60);
+      }
+      return { spawned, got: D.S.coinsGot - before };
+    });
+    check('coin chain spawns 3+ coins', coins.spawned >= 3, JSON.stringify(coins));
+    check('coins are collectable', coins.got >= 1, JSON.stringify(coins));
+
+    // boss arrives in the boss window at level 5, hovers, and fires shots
+    const boss = await page.evaluate(() => {
+      const D = window.__DODGE__;
+      D.S.level = 5; D.S.transition = 0; D.S.time = 11; D.S.boss = null; D.S.bossSpawned = false; D.S.shots = [];
+      let appeared = false, fired = false;
+      for (let i = 0; i < 60 * 8; i++) {
+        D.S.invuln = 5; D.S.time = Math.max(D.S.time, 3); D.step(1 / 60);
+        if (D.S.boss) appeared = true;
+        if (D.S.shots.length > 0) fired = true;
+        if (appeared && fired) break;
+      }
+      return { appeared, fired };
+    });
+    check('boss appears at level 5', boss.appeared);
+    check('boss fires shots', boss.fired);
+
+    // clearing the level clock removes the boss and counts it as survived
+    const cleared = await page.evaluate(() => {
+      const D = window.__DODGE__;
+      const survivedBefore = D.S.bossesSurvived;
+      D.S.time = 0.01; D.S.invuln = 5; D.step(0.02);
+      return { boss: D.S.boss, survived: D.S.bossesSurvived - survivedBefore, level: D.S.level };
+    });
+    check('boss clears on level end', cleared.boss === null && cleared.survived >= 1, JSON.stringify(cleared));
+
     // pause -> resume shows the countdown
     await page.keyboard.press('p');
     await page.waitForTimeout(100);
